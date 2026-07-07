@@ -10,7 +10,7 @@
 
 <div id="topbar">
   <div class="logo">Mini<span>Editor</span> — Three.js</div>
-  <div class="hint">左ドラッグ: 視点回転 ／ 右ドラッグ: パン ／ W: 移動 ／ E: 回転 ／ R: 拡縮 ／ Ctrl+Z: 元に戻す ／ Ctrl+Y: やり直し ／ Ctrl+D: 複製</div>
+  <div class="hint">左ドラッグ: 視点回転 ／ 右ドラッグ: パン ／ W: 移動 ／ E: 回転 ／ R: 拡縮 ／ F: フォーカス ／ Del: 削除 ／ Ctrl+Z/Y: Undo/Redo ／ Ctrl+D: 複製</div>
 </div>
 
 <div id="main">
@@ -132,6 +132,11 @@
           <div class="irow"><label style="width:auto;font-family:inherit">プレイヤーとして操作</label><input type="checkbox" id="obj-player" style="flex:0 0 auto;margin-left:auto"></div>
           <div class="irow"><label style="width:auto;font-family:inherit">移動速度</label><input type="number" step="0.1" min="0.1" id="obj-speed"></div>
           <div class="irow" style="margin-bottom:0"><label style="width:auto;font-family:inherit">自動再生</label><select id="obj-autoclip"></select></div>
+        </div>
+        <div class="isection" id="playset-section">
+          <h3>Play Settings</h3>
+          <div class="irow"><label style="width:auto;font-family:inherit">再生中は非表示 (コライダー)</label><input type="checkbox" id="obj-hideplay" style="flex:0 0 auto;margin-left:auto"></div>
+          <div class="irow" style="margin-bottom:0"><label style="width:auto;font-family:inherit">トリガー (通過を検知)</label><input type="checkbox" id="obj-trigger" style="flex:0 0 auto;margin-left:auto"></div>
         </div>
         <button class="btn" id="btn-delete">オブジェクトを削除</button>
       </div>

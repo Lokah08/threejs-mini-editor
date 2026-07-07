@@ -132,6 +132,21 @@ canvas.addEventListener("pointerup", () => {
   drag = null;
 });
 canvas.addEventListener("contextmenu", e => e.preventDefault());
+
+/* --- F: 選択オブジェクトに視点をフォーカス (Unityライク) --- */
+window.addEventListener("keydown", e => {
+  if (app.playing) return;
+  if (/INPUT|TEXTAREA/.test(document.activeElement.tagName)) return;
+  if (e.key.toLowerCase() === "f" && app.selected && app.viewMode === "scene") {
+    const box = new THREE.Box3().setFromObject(app.selected);
+    if (box.isEmpty()) return;
+    const center = box.getCenter(new THREE.Vector3());
+    const size = box.getSize(new THREE.Vector3()).length();
+    orbit.target.copy(center);
+    orbit.dist = THREE.MathUtils.clamp(size * 1.8, 1.5, 60);
+    orbit.apply();
+  }
+});
 canvas.addEventListener("wheel", e => {
   if (app.viewMode !== "scene") return;
   e.preventDefault();

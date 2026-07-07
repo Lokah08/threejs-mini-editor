@@ -13,7 +13,7 @@ import { stopPlay } from "./play.js";
 ============================================================ */
 export function sceneToJSON() {
   return JSON.stringify({
-    meta: { app: "MiniEditor", version: 5 },   // v3: isPlayer/moveSpeed, v4: camera.playMode, v5: autoClip
+    meta: { app: "MiniEditor", version: 6 },   // v3-5: isPlayer/moveSpeed/camera.playMode/autoClip, v6: hideInPlay/isTrigger
     camera: {
       name: camGizmo.name,
       position: camGizmo.position.toArray(),
@@ -32,6 +32,8 @@ export function sceneToJSON() {
       if (o.userData.isPlayer) base.isPlayer = true;
       if (o.userData.moveSpeed) base.moveSpeed = o.userData.moveSpeed;
       if (o.userData.autoClip) base.autoClip = o.userData.autoClip;
+      if (o.userData.hideInPlay) base.hideInPlay = true;
+      if (o.userData.isTrigger) base.isTrigger = true;
       if (o.userData.kind === "glb") {
         base.glbBase64 = o.userData.glbBase64;   // 元のGLBを丸ごと埋め込む (クリップ含む)
       } else {
@@ -69,6 +71,8 @@ export async function loadJSON(text) {
     if (d.isPlayer) obj.userData.isPlayer = true;      // v3
     if (d.moveSpeed) obj.userData.moveSpeed = d.moveSpeed;
     if (d.autoClip) obj.userData.autoClip = d.autoClip;   // v5
+    if (d.hideInPlay) obj.userData.hideInPlay = true;     // v6
+    if (d.isTrigger) obj.userData.isTrigger = true;       // v6
   }
   if (data.camera) {
     camGizmo.position.fromArray(data.camera.position);

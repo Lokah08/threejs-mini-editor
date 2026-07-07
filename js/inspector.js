@@ -17,6 +17,9 @@ const playerSection = document.getElementById("player-section");
 const playerCheck  = document.getElementById("obj-player");
 const speedInput   = document.getElementById("obj-speed");
 const autoClipSelect = document.getElementById("obj-autoclip");
+const playsetSection = document.getElementById("playset-section");
+const hidePlayCheck  = document.getElementById("obj-hideplay");
+const triggerCheck   = document.getElementById("obj-trigger");
 const bindInputs   = [...document.querySelectorAll("[data-bind]")];
 
 const KIND_LABELS = { glb: "Imported Model (GLB)" };
@@ -34,7 +37,8 @@ onSelect(obj => {
   matSection.style.display    = (isCam || isGlb) ? "none" : "";
   scaleSection.style.display  = isCam ? "none" : "";
   camSection.style.display    = isCam ? "" : "none";
-  playerSection.style.display = isCam ? "none" : "";
+  playerSection.style.display  = isCam ? "none" : "";
+  playsetSection.style.display = isCam ? "none" : "";
   typeLabel.textContent = isCam ? "Camera (Game View の視点)"
                         : KIND_LABELS[obj.userData.kind] ?? `Mesh: ${obj.userData.kind}`;
   refreshInspector();
@@ -70,8 +74,28 @@ export function refreshInspector() {
       autoClipSelect.disabled = true;
       autoClipSelect.append(new Option("(クリップなし)", ""));
     }
+    hidePlayCheck.checked = !!sel.userData.hideInPlay;
+    triggerCheck.checked  = !!sel.userData.isTrigger;
   }
 }
+
+/* --- userDataのboolean設定をUndo対応で切り替える共通処理 --- */
+function bindFlagCheckbox(input, key) {
+  input.addEventListener("change", () => {
+    const sel = app.selected;
+    if (!sel || sel === camGizmo) return;
+    const before = !!sel.userData[key];
+    const after = input.checked;
+    if (before === after) return;
+    sel.userData[key] = after;
+    pushCommand({
+      undo: () => { sel.userData[key] = before; syncAfterEdit(sel); },
+      redo: () => { sel.userData[key] = after;  syncAfterEdit(sel); },
+    });
+  });
+}
+bindFlagCheckbox(hidePlayCheck, "hideInPlay");
+bindFlagCheckbox(triggerCheck, "isTrigger");
 
 /* --- 名前 (focusで控えて、changeで履歴に積む) --- */
 let pendName = null;

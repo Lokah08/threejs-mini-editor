@@ -6,6 +6,7 @@ import { setViewMode, updateOverlay } from "./ui.js";
 
 const btn = document.getElementById("btn-play");
 const SPEED_DEFAULT = 2.5;
+const STEP = 0.35;   // この高さ以下の段差 (床タイル等) は乗り越えられる
 
 const state = {
   player: null, mixer: null,
@@ -13,8 +14,26 @@ const state = {
   snapshot: null, camSnapshot: null, camOffset: null,
   groundY: 0,
   keys: {}, vy: 0, grounded: true,
-  extras: [],   // 自動再生クリップを持つ非プレイヤーの { mixer, snapshot }
+  extras: [],      // 自動再生クリップを持つ非プレイヤーの { mixer, snapshot }
+  obstacles: [],   // 当たり判定用のAABB (メッシュ単位のBox3)
+  colR: 0.2, colH: 1.5,   // プレイヤーの当たり判定の半径と身長
+  hidden: [],      // 再生中に非表示にしたオブジェクト (停止時に戻す)
+  triggers: [],    // トリガーゾーン { box, name, inside }
 };
+
+/* --- トリガー通過などのお知らせ表示 --- */
+const toast = document.createElement("div");
+toast.style.cssText = "position:absolute;top:44px;left:50%;transform:translateX(-50%);" +
+  "background:rgba(20,25,40,.88);color:#ffd166;border:1px solid rgba(255,209,102,.4);" +
+  "padding:8px 18px;border-radius:8px;font-size:14px;display:none;z-index:5;pointer-events:none;";
+document.getElementById("canvas-wrap").appendChild(toast);
+let toastTimer = 0;
+function showToast(msg) {
+  toast.textContent = msg;
+  toast.style.display = "block";
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { toast.style.display = "none"; }, 2000);
+}
 
 // カメラ更新用のテンポラリ (毎フレームのnew回避)
 const _desired = new THREE.Vector3();
@@ -34,6 +53,31 @@ function restorePose(list) {
     o.quaternion.copy(q);
     o.scale.copy(s);
   }
+}
+
+/* --- 当たり判定: プレイヤーの箱 (x,y,z に居るとして) が障害物と重なるか --- */
+function collides(x, y, z) {
+  const minX = x - state.colR, maxX = x + state.colR;
+  const minZ = z - state.colR, maxZ = z + state.colR;
+  const bottom = y + STEP, top = y + state.colH;   // 低い段差は足元扱いで無視
+  for (const b of state.obstacles) {
+    if (maxX <= b.min.x || minX >= b.max.x) continue;
+    if (maxZ <= b.min.z || minZ >= b.max.z) continue;
+    if (b.max.y <= bottom || b.min.y >= top) continue;   // 段差以下 or 頭上
+    return true;
+  }
+  return false;
+}
+
+/* --- 足元の支持面の高さ (障害物の上に乗れる。無ければ地面) --- */
+function supportHeightAt(x, z, y) {
+  let g = state.groundY;
+  for (const b of state.obstacles) {
+    if (x + state.colR <= b.min.x || x - state.colR >= b.max.x) continue;
+    if (z + state.colR <= b.min.z || z - state.colR >= b.max.z) continue;
+    if (b.max.y <= y + STEP && b.max.y > g) g = b.max.y;   // 足元以下で一番高い面
+  }
+  return g;
 }
 
 /* --- クリップのクロスフェード --- */
@@ -56,6 +100,34 @@ export function startPlay() {
   state.camOffset = camGizmo.position.clone().sub(player.position);   // 追従用: 開始時の構図
   state.groundY = player.position.y;
   state.keys = {}; state.vy = 0; state.grounded = true;
+
+  // 当たり判定の準備: プレイヤーの寸法と、障害物のAABB一覧 (メッシュ単位)
+  const pbox = new THREE.Box3().setFromObject(player);
+  state.colH = Math.max(pbox.max.y - pbox.min.y, 0.2);
+  state.colR = Math.max(Math.min(pbox.max.x - pbox.min.x, pbox.max.z - pbox.min.z) * 0.4, 0.1);
+  state.obstacles = [];
+  state.triggers = [];
+  state.hidden = [];
+  for (const o of objects) {
+    if (o === player || o === camGizmo) continue;
+    o.updateWorldMatrix(true, true);
+    if (o.userData.isTrigger) {
+      // トリガー: 当たり判定なし・再生中非表示・通過を検知
+      const b = new THREE.Box3().setFromObject(o);
+      if (!b.isEmpty()) state.triggers.push({ box: b, name: o.name, inside: false });
+    } else {
+      o.traverse(m => {
+        if (m.isMesh) {
+          const b = new THREE.Box3().setFromObject(m);
+          if (!b.isEmpty()) state.obstacles.push(b);
+        }
+      });
+    }
+    if ((o.userData.hideInPlay || o.userData.isTrigger) && o.visible) {
+      o.visible = false;   // 見えない壁 / トリガーは再生中は姿を消す
+      state.hidden.push(o);
+    }
+  }
 
   const clips = player.userData.clips || [];
   if (clips.length) {
@@ -97,7 +169,12 @@ export function stopPlay() {
     ex.mixer.stopAllAction();
     restorePose(ex.snapshot);
   }
+  for (const o of state.hidden) o.visible = true;
+  state.hidden = [];
   state.extras = [];
+  state.obstacles = [];
+  state.triggers = [];
+  toast.style.display = "none";
   state.mixer = null; state.walk = null; state.idle = null; state.current = null;
   state.player = null; state.snapshot = null; state.camSnapshot = null; state.camOffset = null;
   app.playing = false;
@@ -122,21 +199,45 @@ export function updatePlay(dt) {
   if (moving) {
     const len = Math.hypot(dx, dz);
     const sp = p.userData.moveSpeed || SPEED_DEFAULT;
-    p.position.x += (dx / len) * sp * dt;
-    p.position.z += (dz / len) * sp * dt;
+    const nx = p.position.x + (dx / len) * sp * dt;
+    const nz = p.position.z + (dz / len) * sp * dt;
+    // 軸ごとに判定して、壁に斜めに当たったときは沿ってスライドする。
+    // 既にめり込んでいる場合 (stuck) は脱出を優先して移動を許可する。
+    const stuck = collides(p.position.x, p.position.y, p.position.z);
+    if (stuck || !collides(nx, p.position.y, p.position.z)) p.position.x = nx;
+    if (stuck || !collides(p.position.x, p.position.y, nz)) p.position.z = nz;
     p.rotation.y = Math.atan2(dx, dz);
   }
 
-  // ジャンプ (Space)
+  // 重力と着地: 障害物の上にも乗れる (足元の支持面を毎フレーム求める)
+  const support = supportHeightAt(p.position.x, p.position.z, p.position.y);
+  if (state.grounded) {
+    if (p.position.y > support + 0.001) {
+      state.grounded = false;   // 端から歩き出した → 落下開始
+    } else {
+      p.position.y = support;   // 低い段差は登り降りに追従
+    }
+  }
   if (k[" "] && state.grounded) { state.vy = 4.5; state.grounded = false; }
   if (!state.grounded) {
     p.position.y += state.vy * dt;
     state.vy -= 12 * dt;
-    if (p.position.y <= state.groundY) {
-      p.position.y = state.groundY;
+    if (state.vy <= 0 && p.position.y <= support) {
+      p.position.y = support;   // 落下中に支持面へ着地 (机の上などもOK)
       state.vy = 0;
       state.grounded = true;
     }
+  }
+
+  // トリガー通過の検知 (入った瞬間に一度だけ通知、出たらリセット)
+  for (const t of state.triggers) {
+    const inside = !(
+      p.position.x + state.colR <= t.box.min.x || p.position.x - state.colR >= t.box.max.x ||
+      p.position.z + state.colR <= t.box.min.z || p.position.z - state.colR >= t.box.max.z ||
+      t.box.max.y <= p.position.y || t.box.min.y >= p.position.y + state.colH
+    );
+    if (inside && !t.inside) showToast(`🚩 ${t.name} を通過!`);
+    t.inside = inside;
   }
 
   if (state.mixer) {

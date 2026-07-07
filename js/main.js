@@ -7,7 +7,7 @@ import {
 import { addPrimitive, makeTexture } from "./primitives.js";
 import { updateGizmoFrame } from "./gizmo.js";
 import { updateOverlay } from "./ui.js";
-import { pushAdd, pushCommand } from "./history.js";
+import { pushAdd, pushCommand, pushDelete } from "./history.js";
 import { importGLBFromBase64 } from "./io.js";
 import { updatePlay } from "./play.js";
 import "./inspector.js";
@@ -83,6 +83,11 @@ window.addEventListener("keydown", e => {
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "d") {
     e.preventDefault();   // ブラウザのブックマーク追加を抑止
     duplicateSelected();
+  }
+  // Delete: 選択オブジェクトを削除 (Undo可)
+  if (e.key === "Delete" && app.selected && app.selected !== camGizmo) {
+    pushDelete(app.selected);
+    updateOverlay();
   }
 });
 
