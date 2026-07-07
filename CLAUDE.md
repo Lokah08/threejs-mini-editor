@@ -30,7 +30,7 @@ ES Modulesのためファイル直開き (file://) では動かない。
 - 再生モードは `js/play.js`。`app.playing` が true の間は編集操作を全て無効化
   (各モジュールのハンドラ先頭で `if (app.playing) return`)。プレイヤーは
   `userData.isPlayer` (シーンに1体、Inspectorで排他設定)、速度は `userData.moveSpeed`。
-  開始時にプレイヤーのポーズをスナップショットし、停止時に完全復元する。
+  開始時にプレイヤーとカメラのポーズをスナップショットし、停止時に完全復元する。
   クリップは "walk" / "idle" を名前で探す (walkが無ければ先頭クリップ)。
 
 ## 規約
@@ -50,7 +50,10 @@ ES Modulesのためファイル直開き (file://) では動かない。
   再インポート。少しオフセットして配置
 - 再生モード (▶ボタン): プレイヤーをWASD/矢印で移動、Spaceジャンプ、
   移動中はwalk・停止中はidleクリップをクロスフェード再生。Escか■で停止。
-  scene.json は version 3 (isPlayer / moveSpeed を追加)
+- カメラの再生中挙動 (Main CameraのInspectorで選択、`camGizmo.userData.playMode`):
+  "fixed" 固定 / "follow" 追従 (開始時の構図を保ち位置をlerp) /
+  "lookat" 注視 (位置固定でプレイヤーへquaternionをslerp)。停止時はカメラも復元。
+  scene.json は version 4 (v3: isPlayer/moveSpeed, v4: camera.playMode)
 
 ## 今後の候補 (未実装)
 

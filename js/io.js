@@ -13,12 +13,13 @@ import { stopPlay } from "./play.js";
 ============================================================ */
 export function sceneToJSON() {
   return JSON.stringify({
-    meta: { app: "MiniEditor", version: 3 },   // v3: isPlayer / moveSpeed 追加
+    meta: { app: "MiniEditor", version: 4 },   // v3: isPlayer/moveSpeed, v4: camera.playMode
     camera: {
       name: camGizmo.name,
       position: camGizmo.position.toArray(),
       rotation: camGizmo.rotation.toArray().slice(0, 3),
       fov: gameCam.fov,
+      playMode: camGizmo.userData.playMode || "fixed",
     },
     objects: objects.filter(o => o !== camGizmo).map(o => {
       const base = {
@@ -72,6 +73,7 @@ export async function loadJSON(text) {
     camGizmo.rotation.fromArray([...data.camera.rotation, "XYZ"]);
     gameCam.fov = data.camera.fov || 60;
     gameCam.updateProjectionMatrix();
+    camGizmo.userData.playMode = data.camera.playMode || "fixed";   // v4
   }
   select(null);
   updateOverlay();

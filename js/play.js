@@ -1,7 +1,7 @@
 // play.js — 再生モード: プレイヤー操作 (WASD/Space) とアニメーションクリップ再生
 // ▶ で開始、■ / Esc で停止。停止時は再生前のポーズ・位置に完全復帰する。
 import * as THREE from "three";
-import { objects, app, select } from "./state.js";
+import { objects, app, camGizmo, select } from "./state.js";
 import { setViewMode, updateOverlay } from "./ui.js";
 
 const btn = document.getElementById("btn-play");
@@ -10,9 +10,16 @@ const SPEED_DEFAULT = 2.5;
 const state = {
   player: null, mixer: null,
   walk: null, idle: null, current: null,
-  snapshot: null, groundY: 0,
+  snapshot: null, camSnapshot: null, camOffset: null,
+  groundY: 0,
   keys: {}, vy: 0, grounded: true,
 };
+
+// カメラ更新用のテンポラリ (毎フレームのnew回避)
+const _desired = new THREE.Vector3();
+const _look = new THREE.Vector3();
+const _m = new THREE.Matrix4();
+const _q = new THREE.Quaternion();
 
 /* --- ポーズの保存/復元 (再生中の変更をシーンに残さない) --- */
 function snapshotPose(root) {
@@ -44,6 +51,8 @@ export function startPlay() {
   }
   state.player = player;
   state.snapshot = snapshotPose(player);
+  state.camSnapshot = snapshotPose(camGizmo);   // カメラも停止時に復元する
+  state.camOffset = camGizmo.position.clone().sub(player.position);   // 追従用: 開始時の構図
   state.groundY = player.position.y;
   state.keys = {}; state.vy = 0; state.grounded = true;
 
@@ -69,8 +78,9 @@ export function stopPlay() {
   if (!app.playing) return;
   if (state.mixer) state.mixer.stopAllAction();
   if (state.snapshot) restorePose(state.snapshot);
+  if (state.camSnapshot) restorePose(state.camSnapshot);
   state.mixer = null; state.walk = null; state.idle = null; state.current = null;
-  state.player = null; state.snapshot = null;
+  state.player = null; state.snapshot = null; state.camSnapshot = null; state.camOffset = null;
   app.playing = false;
   btn.textContent = "▶ 再生";
   btn.classList.remove("playing");
@@ -113,6 +123,24 @@ export function updatePlay(dt) {
   if (state.mixer) {
     fade(moving ? state.walk : state.idle);
     state.mixer.update(dt);
+  }
+
+  /* --- カメラの再生中挙動 (Main Camera の Inspector で設定) --- */
+  const camMode = camGizmo.userData.playMode || "fixed";
+  if (camMode !== "fixed") {
+    const damp = 1 - Math.exp(-6 * dt);   // フレームレート非依存の滑らかさ
+    if (camMode === "follow") {
+      // 追従: 開始時の構図 (プレイヤーとの位置関係) を保って平行移動 (ドリー撮影)
+      _desired.copy(p.position).add(state.camOffset);
+      camGizmo.position.lerp(_desired, damp);
+    } else if (camMode === "lookat") {
+      // 注視: カメラは動かず、首だけ振ってプレイヤーを追う (パン撮影)
+      _look.copy(p.position);
+      _look.y += 0.8;
+      _m.lookAt(camGizmo.position, _look, camGizmo.up);
+      _q.setFromRotationMatrix(_m);
+      camGizmo.quaternion.slerp(_q, damp);
+    }
   }
 }
 

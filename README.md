@@ -28,6 +28,7 @@ Three.js本体はCDN (unpkg) から読み込むため、ビルド不要・npm in
 - **Undo/Redo**: Ctrl+Z / Ctrl+Y (Ctrl+Shift+Z)。追加・削除・移動・回転・拡縮・色・テクスチャ等に対応
 - **複製**: Ctrl+D で選択オブジェクトを複製
 - **再生モード**: ▶でプレイヤーをWASD操作 (Spaceジャンプ)。GLB同梱のwalk/idleクリップを自動再生
+- **カメラ挙動**: 再生中のMain Cameraを「固定 / 追従 (構図キープ) / 注視」から選択
 - **scene.json**: シーンの保存・読み込み (モーダル / ファイル選択 / D&D)
 - **GLB入出力**: .glb/.gltf のインポート (D&D対応)、シーン全体のGLB書き出し
 

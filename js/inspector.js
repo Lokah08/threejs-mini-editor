@@ -9,6 +9,7 @@ const nameInput    = document.getElementById("obj-name");
 const typeLabel    = document.getElementById("obj-type");
 const colorInput   = document.getElementById("obj-color");
 const fovInput     = document.getElementById("cam-fov");
+const camPlaySelect = document.getElementById("cam-play");
 const matSection   = document.getElementById("mat-section");
 const camSection   = document.getElementById("cam-section");
 const scaleSection = document.getElementById("scale-section");
@@ -49,7 +50,10 @@ export function refreshInspector() {
     if (prop === "rotation") v = THREE.MathUtils.radToDeg(v);
     inp.value = Math.round(v * 100) / 100;
   }
-  if (sel === camGizmo) fovInput.value = gameCam.fov;
+  if (sel === camGizmo) {
+    fovInput.value = gameCam.fov;
+    camPlaySelect.value = camGizmo.userData.playMode || "fixed";
+  }
   else if (sel.material) colorInput.value = "#" + sel.material.color.getHexString();
   if (sel !== camGizmo) {
     playerCheck.checked = !!sel.userData.isPlayer;
@@ -115,6 +119,18 @@ fovInput.addEventListener("change", () => {
     redo: () => { gameCam.fov = after;  gameCam.updateProjectionMatrix(); syncAfterEdit(camGizmo); },
   });
   pendFov = null;
+});
+
+/* --- 再生中のカメラ挙動 (固定 / 追従 / 注視) --- */
+camPlaySelect.addEventListener("change", () => {
+  const before = camGizmo.userData.playMode || "fixed";
+  const after = camPlaySelect.value;
+  if (before === after) return;
+  camGizmo.userData.playMode = after;
+  pushCommand({
+    undo: () => { camGizmo.userData.playMode = before; syncAfterEdit(camGizmo); },
+    redo: () => { camGizmo.userData.playMode = after;  syncAfterEdit(camGizmo); },
+  });
 });
 
 /* --- Transform数値入力 (focusで控えて、changeで履歴に積む) --- */

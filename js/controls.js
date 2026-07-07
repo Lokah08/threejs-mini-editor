@@ -135,6 +135,9 @@ canvas.addEventListener("contextmenu", e => e.preventDefault());
 canvas.addEventListener("wheel", e => {
   if (app.viewMode !== "scene") return;
   e.preventDefault();
-  orbit.dist = THREE.MathUtils.clamp(orbit.dist * (e.deltaY > 0 ? 1.1 : 0.9), 1.5, 60);
+  // イベント回数ではなくスクロール量に比例させる
+  // (高解像度ホイールは1ノッチを多数の小イベントに分割して送ってくるため)
+  const dy = e.deltaMode === 1 ? e.deltaY * 33 : e.deltaY;   // 行単位モードのマウス対策
+  orbit.dist = THREE.MathUtils.clamp(orbit.dist * Math.pow(1.0015, dy), 1.5, 60);
   orbit.apply();
 }, { passive: false });

@@ -119,6 +119,13 @@
         <div class="isection" id="cam-section" style="display:none">
           <h3>Camera</h3>
           <div class="irow"><label style="width:auto;font-family:inherit">FOV</label><input type="number" step="1" min="10" max="120" id="cam-fov"></div>
+          <div class="irow" style="margin-bottom:0"><label style="width:auto;font-family:inherit">再生中</label>
+            <select id="cam-play">
+              <option value="fixed">固定</option>
+              <option value="follow">追従 (構図キープ)</option>
+              <option value="lookat">注視 (その場で向く)</option>
+            </select>
+          </div>
         </div>
         <div class="isection" id="player-section">
           <h3>Character</h3>

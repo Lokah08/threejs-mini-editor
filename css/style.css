@@ -145,6 +145,11 @@ body{
 .irow input[type=color]{
   flex:1;height:24px;background:#191b1e;border:1px solid #101113;border-radius:4px;padding:1px 2px;cursor:pointer;
 }
+.irow select{
+  flex:1;min-width:0;background:#191b1e;border:1px solid #101113;
+  color:var(--text);border-radius:4px;padding:3px 4px;font-size:11px;outline:none;
+}
+.irow select:focus{border-color:var(--accent)}
 .axis-x{color:#ff6b6b !important}
 .axis-y{color:#8bd450 !important}
 .axis-z{color:#5aa2ff !important}
