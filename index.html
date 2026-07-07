@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mini Editor — Three.js</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div id="topbar">
+  <div class="logo">Mini<span>Editor</span> — Three.js</div>
+  <div class="hint">左ドラッグ: 視点回転 ／ 右ドラッグ: パン ／ W: 移動 ／ E: 回転 ／ R: 拡縮 ／ Ctrl+Z: 元に戻す ／ Ctrl+Y: やり直し ／ Ctrl+D: 複製</div>
+</div>
+
+<div id="main">
+
+  <!-- ===== 左カラム: Hierarchy + Assets ===== -->
+  <div id="left">
+
+  <!-- ===== Hierarchy ===== -->
+  <div class="panel" id="hierarchy">
+    <h2>Hierarchy</h2>
+    <div class="tree" id="hier-list"></div>
+  </div>
+
+  <!-- ===== Assets ===== -->
+  <div class="panel" id="assets">
+    <h2>Assets</h2>
+    <div class="tree">
+      <div class="folder open">
+        <div class="fname">📁 models/</div>
+        <div class="items">
+          <div class="asset" data-add="box"><span class="ico">◼</span>Cube<small>.obj</small></div>
+          <div class="asset" data-add="sphere"><span class="ico">●</span>Sphere<small>.obj</small></div>
+          <div class="asset" data-add="cylinder"><span class="ico">▮</span>Cylinder<small>.obj</small></div>
+          <div class="asset" data-add="torus"><span class="ico">◯</span>Torus<small>.obj</small></div>
+          <div class="asset" data-add="plane"><span class="ico">▬</span>Plane<small>.obj</small></div>
+          <div class="asset" id="glb-import"><span class="ico">📥</span>GLBを開く…<small>.glb</small></div>
+        </div>
+      </div>
+      <div class="folder open">
+        <div class="fname">📁 textures/</div>
+        <div class="items">
+          <div class="asset" data-tex="checker"><span class="ico">🏁</span>checker<small>.png</small></div>
+          <div class="asset" data-tex="grid"><span class="ico">▦</span>grid<small>.png</small></div>
+          <div class="asset" data-tex="uv"><span class="ico">🌈</span>uv_test<small>.png</small></div>
+          <div class="asset" data-tex="none"><span class="ico">✕</span>(テクスチャ解除)</div>
+        </div>
+      </div>
+      <div class="folder open">
+        <div class="fname">📁 scenes/</div>
+        <div class="items">
+          <div class="asset" id="open-scene-json"><span class="ico">📄</span>scene.json</div>
+          <div class="asset" id="glb-export"><span class="ico">📤</span>scene.glb (書き出し)</div>
+        </div>
+      </div>
+    </div>
+    <div class="note">
+      models: クリックでシーンに追加<br>
+      textures: 選択中のオブジェクトに適用<br>
+      scene.json / GLB: 保存・読み込み<br>
+      (.json / .glb を画面にドロップでも読込可)
+    </div>
+  </div>
+
+  </div><!-- /#left -->
+
+  <!-- ===== Viewport ===== -->
+  <div id="viewport">
+    <div id="vtabs">
+      <div class="vtab active" data-view="scene"><span class="dot"></span>Scene View</div>
+      <div class="vtab" data-view="game"><span class="dot"></span>Game View</div>
+      <div id="tools">
+        <button class="tool active" data-tool="translate" title="ショートカット: W">⇄ 移動 (W)</button>
+        <button class="tool" data-tool="rotate" title="ショートカット: E">⟳ 回転 (E)</button>
+        <button class="tool" data-tool="scale" title="ショートカット: R">⤢ 拡縮 (R)</button>
+      </div>
+    </div>
+    <div id="canvas-wrap">
+      <div id="game-frame"></div>
+      <div id="view-overlay"></div>
+    </div>
+  </div>
+
+  <!-- ===== Inspector ===== -->
+  <div class="panel" id="inspector">
+    <h2>Inspector</h2>
+    <div class="body">
+      <div id="insp-empty">オブジェクト未選択<br><br>Scene View でオブジェクトをクリックすると、ここに Transform が表示されます。</div>
+      <div id="insp-content" style="display:none">
+        <div class="isection">
+          <div class="irow"><input type="text" id="obj-name"></div>
+          <div class="irow" style="margin-bottom:0"><label style="width:auto" id="obj-type"></label></div>
+        </div>
+        <div class="isection">
+          <h3>Position</h3>
+          <div class="irow"><label class="axis-x">X</label><input type="number" step="0.1" data-bind="position.x"></div>
+          <div class="irow"><label class="axis-y">Y</label><input type="number" step="0.1" data-bind="position.y"></div>
+          <div class="irow"><label class="axis-z">Z</label><input type="number" step="0.1" data-bind="position.z"></div>
+        </div>
+        <div class="isection">
+          <h3>Rotation (deg)</h3>
+          <div class="irow"><label class="axis-x">X</label><input type="number" step="1" data-bind="rotation.x"></div>
+          <div class="irow"><label class="axis-y">Y</label><input type="number" step="1" data-bind="rotation.y"></div>
+          <div class="irow"><label class="axis-z">Z</label><input type="number" step="1" data-bind="rotation.z"></div>
+        </div>
+        <div class="isection" id="scale-section">
+          <h3>Scale</h3>
+          <div class="irow"><label class="axis-x">X</label><input type="number" step="0.1" data-bind="scale.x"></div>
+          <div class="irow"><label class="axis-y">Y</label><input type="number" step="0.1" data-bind="scale.y"></div>
+          <div class="irow"><label class="axis-z">Z</label><input type="number" step="0.1" data-bind="scale.z"></div>
+        </div>
+        <div class="isection" id="mat-section">
+          <h3>Material</h3>
+          <div class="irow"><label style="width:auto;font-family:inherit">Color</label><input type="color" id="obj-color"></div>
+        </div>
+        <div class="isection" id="cam-section" style="display:none">
+          <h3>Camera</h3>
+          <div class="irow"><label style="width:auto;font-family:inherit">FOV</label><input type="number" step="1" min="10" max="120" id="cam-fov"></div>
+        </div>
+        <button class="btn" id="btn-delete">オブジェクトを削除</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== scene.json モーダル ===== -->
+<div id="modal">
+  <div class="box">
+    <h3>scenes / scene.json</h3>
+    <textarea id="json-area" spellcheck="false"></textarea>
+    <div class="msg" id="json-msg"></div>
+    <div class="actions">
+      <input type="file" id="json-file" accept=".json,application/json" style="display:none">
+      <button id="json-open-file">📂 ファイルを開く…</button>
+      <button id="json-copy">コピー</button>
+      <button id="json-download">ダウンロード</button>
+      <button id="json-load" class="primary">このJSONを読み込む</button>
+      <button id="json-close">閉じる</button>
+    </div>
+  </div>
+</div>
+<input type="file" id="glb-file" accept=".glb,.gltf" style="display:none">
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
