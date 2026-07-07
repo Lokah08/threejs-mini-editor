@@ -1,4 +1,4 @@
-// state.js — エディタ全体で共有する状態 (シーン、カメラ、選択)
+// state.js — エディタ全体で共有する状態 (シーン、カメラ、選択、再生フラグ)
 import * as THREE from "three";
 
 /* ===== レンダラ & シーン ===== */
@@ -67,7 +67,7 @@ scene.add(camHelper);
 export const objects = [camGizmo];
 
 /* ===== 選択 ===== */
-export const app = { viewMode: "scene", selected: null };
+export const app = { viewMode: "scene", selected: null, playing: false };
 
 export const selBox = new THREE.BoxHelper(undefined, 0x4f9dff);
 selBox.visible = false;

@@ -39,6 +39,12 @@ canvas.addEventListener("pointerdown", e => {
   }
   if (e.button !== 0) return;
 
+  // 再生中は選択・ドラッグ移動を無効化 (視点操作のみ)
+  if (app.playing) {
+    drag = { mode: "orbit", x: e.clientX, y: e.clientY, moved: true };
+    return;
+  }
+
   // ギズモのハンドルを最優先で判定
   if (app.selected) {
     castFromMouse(e);

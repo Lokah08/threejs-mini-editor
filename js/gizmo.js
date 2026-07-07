@@ -87,6 +87,7 @@ export function setTool(t) {
 }
 document.querySelectorAll(".tool").forEach(b => b.addEventListener("click", () => setTool(b.dataset.tool)));
 window.addEventListener("keydown", e => {
+  if (app.playing) return;   // 再生中はWASDがプレイヤー操作になる
   if (/INPUT|TEXTAREA/.test(document.activeElement.tagName)) return;
   const k = e.key.toLowerCase();
   if (k === "w") setTool("translate");

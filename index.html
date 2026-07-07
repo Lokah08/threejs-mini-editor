@@ -72,6 +72,7 @@
       <div class="vtab active" data-view="scene"><span class="dot"></span>Scene View</div>
       <div class="vtab" data-view="game"><span class="dot"></span>Game View</div>
       <div id="tools">
+        <button class="tool play" id="btn-play" title="再生モード: プレイヤーをWASDで操作">▶ 再生</button>
         <button class="tool active" data-tool="translate" title="ショートカット: W">⇄ 移動 (W)</button>
         <button class="tool" data-tool="rotate" title="ショートカット: E">⟳ 回転 (E)</button>
         <button class="tool" data-tool="scale" title="ショートカット: R">⤢ 拡縮 (R)</button>
@@ -118,6 +119,12 @@
         <div class="isection" id="cam-section" style="display:none">
           <h3>Camera</h3>
           <div class="irow"><label style="width:auto;font-family:inherit">FOV</label><input type="number" step="1" min="10" max="120" id="cam-fov"></div>
+        </div>
+        <div class="isection" id="player-section">
+          <h3>Character</h3>
+          <div class="irow"><label style="width:auto;font-family:inherit">プレイヤーとして操作</label><input type="checkbox" id="obj-player" style="flex:0 0 auto;margin-left:auto"></div>
+          <div class="irow"><label style="width:auto;font-family:inherit">移動速度</label><input type="number" step="0.1" min="0.1" id="obj-speed"></div>
+          <div class="irow" style="margin-bottom:0"><label style="width:auto;font-family:inherit;font-size:10.5px" id="obj-clips"></label></div>
         </div>
         <button class="btn" id="btn-delete">オブジェクトを削除</button>
       </div>

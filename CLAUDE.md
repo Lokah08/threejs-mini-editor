@@ -25,6 +25,13 @@ ES Modulesのためファイル直開き (file://) では動かない。
 - Main Camera はシーン内のギズモ (`camGizmo`) として存在し、毎フレーム `gameCam` に姿勢を同期。
 - GLBインポートしたモデルは gltf.scene (Group) を1つの選択単位として objects に入れる。
   `userData.kind === "glb"`、元バイナリは `userData.glbBase64` に保持 (scene.json 保存用)。
+  同梱アニメーションは `userData.clips` (AnimationClip[]) に保持 (バイナリ由来なので
+  scene.json 経由の復元でも消えない)。
+- 再生モードは `js/play.js`。`app.playing` が true の間は編集操作を全て無効化
+  (各モジュールのハンドラ先頭で `if (app.playing) return`)。プレイヤーは
+  `userData.isPlayer` (シーンに1体、Inspectorで排他設定)、速度は `userData.moveSpeed`。
+  開始時にプレイヤーのポーズをスナップショットし、停止時に完全復元する。
+  クリップは "walk" / "idle" を名前で探す (walkが無ければ先頭クリップ)。
 
 ## 規約
 
@@ -41,9 +48,12 @@ ES Modulesのためファイル直開き (file://) では動かない。
   名前・色・テクスチャ・FOV・GLBインポートが対象。scene.json読込で履歴リセット
 - オブジェクト複製 (Ctrl+D): プリミティブは同設定で再生成、GLBは glbBase64 から
   再インポート。少しオフセットして配置
+- 再生モード (▶ボタン): プレイヤーをWASD/矢印で移動、Spaceジャンプ、
+  移動中はwalk・停止中はidleクリップをクロスフェード再生。Escか■で停止。
+  scene.json は version 3 (isPlayer / moveSpeed を追加)
 
 ## 今後の候補 (未実装)
 
-- Hierarchyの親子関係・グループ化 (scene.json version 3 が必要)
+- Hierarchyの親子関係・グループ化 (scene.json version 4 が必要)
 - ライトをオブジェクトとして配置・編集
-- 再生モード (コンポーネント方式の振る舞い付与)
+- 再生モードの拡張 (追従カメラ、当たり判定、プレイヤー以外のクリップ自動再生)

@@ -99,6 +99,7 @@ export function pushDelete(obj) {
    キーバインド: Ctrl+Z = Undo / Ctrl+Y, Ctrl+Shift+Z = Redo
 ============================================================ */
 window.addEventListener("keydown", e => {
+  if (app.playing) return;   // 再生中はUndo/Redo無効 (停止時に元へ戻るため)
   if (/INPUT|TEXTAREA/.test(document.activeElement.tagName)) return;
   if (!(e.ctrlKey || e.metaKey)) return;
   const k = e.key.toLowerCase();

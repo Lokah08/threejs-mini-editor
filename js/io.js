@@ -6,13 +6,14 @@ import { scene, objects, camGizmo, gameCam, select, removeObject, notifySceneCha
 import { addPrimitive, resetCounter } from "./primitives.js";
 import { updateOverlay } from "./ui.js";
 import { pushAdd, clearHistory } from "./history.js";
+import { stopPlay } from "./play.js";
 
 /* ============================================================
    scene.json
 ============================================================ */
 export function sceneToJSON() {
   return JSON.stringify({
-    meta: { app: "MiniEditor", version: 2 },
+    meta: { app: "MiniEditor", version: 3 },   // v3: isPlayer / moveSpeed 追加
     camera: {
       name: camGizmo.name,
       position: camGizmo.position.toArray(),
@@ -27,8 +28,10 @@ export function sceneToJSON() {
         rotation: o.rotation.toArray().slice(0, 3),
         scale: o.scale.toArray(),
       };
+      if (o.userData.isPlayer) base.isPlayer = true;
+      if (o.userData.moveSpeed) base.moveSpeed = o.userData.moveSpeed;
       if (o.userData.kind === "glb") {
-        base.glbBase64 = o.userData.glbBase64;   // 元のGLBを丸ごと埋め込む
+        base.glbBase64 = o.userData.glbBase64;   // 元のGLBを丸ごと埋め込む (クリップ含む)
       } else {
         base.color = "#" + o.material.color.getHexString();
         base.texture = o.userData.texKind;
@@ -40,6 +43,7 @@ export function sceneToJSON() {
 
 export async function loadJSON(text) {
   const data = JSON.parse(text);
+  stopPlay();   // 再生中なら停止してから入れ替える
   // シーン丸ごと入れ替えなので履歴はリセット
   clearHistory();
   // 既存オブジェクトを全消去 (Main Camera 以外)
@@ -48,17 +52,20 @@ export async function loadJSON(text) {
   resetCounter();
 
   for (const d of (data.objects || [])) {
+    let obj;
     if (d.kind === "glb" && d.glbBase64) {
-      const obj = await importGLBFromBase64(d.glbBase64, d.name);
+      obj = await importGLBFromBase64(d.glbBase64, d.name);
       obj.position.fromArray(d.position);
       obj.rotation.fromArray([...d.rotation, "XYZ"]);
       obj.scale.fromArray(d.scale);
     } else {
-      addPrimitive(d.kind, {
+      obj = addPrimitive(d.kind, {
         name: d.name, position: d.position, rotation: d.rotation,
         scale: d.scale, color: new THREE.Color(d.color), texKind: d.texture,
       });
     }
+    if (d.isPlayer) obj.userData.isPlayer = true;      // v3
+    if (d.moveSpeed) obj.userData.moveSpeed = d.moveSpeed;
   }
   if (data.camera) {
     camGizmo.position.fromArray(data.camera.position);
@@ -111,6 +118,7 @@ async function importGLBFromBuffer(arrayBuffer, name) {
   root.name = name || "Model";
   root.userData.kind = "glb";
   root.userData.glbBase64 = bufferToBase64(arrayBuffer);
+  root.userData.clips = gltf.animations || [];   // 同梱アニメーション (再生モードで使用)
   scene.add(root);
   objects.push(root);
   notifySceneChanged();

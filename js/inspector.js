@@ -1,6 +1,6 @@
 // inspector.js — Inspector パネルの表示と入力バインド
 import * as THREE from "three";
-import { app, camGizmo, gameCam, selBox, onSelect, notifySceneChanged } from "./state.js";
+import { app, camGizmo, gameCam, selBox, objects, onSelect, notifySceneChanged } from "./state.js";
 import { pushCommand, pushDelete, snapshotTransform, pushTransform } from "./history.js";
 
 const inspEmpty    = document.getElementById("insp-empty");
@@ -12,6 +12,10 @@ const fovInput     = document.getElementById("cam-fov");
 const matSection   = document.getElementById("mat-section");
 const camSection   = document.getElementById("cam-section");
 const scaleSection = document.getElementById("scale-section");
+const playerSection = document.getElementById("player-section");
+const playerCheck  = document.getElementById("obj-player");
+const speedInput   = document.getElementById("obj-speed");
+const clipsLabel   = document.getElementById("obj-clips");
 const bindInputs   = [...document.querySelectorAll("[data-bind]")];
 
 const KIND_LABELS = { glb: "Imported Model (GLB)" };
@@ -26,9 +30,10 @@ onSelect(obj => {
   inspContent.style.display = "";
   const isCam = obj === camGizmo;
   const isGlb = obj.userData.kind === "glb";
-  matSection.style.display   = (isCam || isGlb) ? "none" : "";
-  scaleSection.style.display = isCam ? "none" : "";
-  camSection.style.display   = isCam ? "" : "none";
+  matSection.style.display    = (isCam || isGlb) ? "none" : "";
+  scaleSection.style.display  = isCam ? "none" : "";
+  camSection.style.display    = isCam ? "" : "none";
+  playerSection.style.display = isCam ? "none" : "";
   typeLabel.textContent = isCam ? "Camera (Game View の視点)"
                         : KIND_LABELS[obj.userData.kind] ?? `Mesh: ${obj.userData.kind}`;
   refreshInspector();
@@ -46,6 +51,12 @@ export function refreshInspector() {
   }
   if (sel === camGizmo) fovInput.value = gameCam.fov;
   else if (sel.material) colorInput.value = "#" + sel.material.color.getHexString();
+  if (sel !== camGizmo) {
+    playerCheck.checked = !!sel.userData.isPlayer;
+    speedInput.value = sel.userData.moveSpeed ?? 2.5;
+    const clips = sel.userData.clips || [];
+    clipsLabel.textContent = "クリップ: " + (clips.length ? clips.map(c => c.name).join(", ") : "なし");
+  }
 }
 
 /* --- 名前 (focusで控えて、changeで履歴に積む) --- */
@@ -127,6 +138,50 @@ for (const inp of bindInputs) {
     pendT = null;
   });
 }
+
+/* --- プレイヤー指定 (シーンに1体だけ。既存プレイヤーは自動解除) --- */
+playerCheck.addEventListener("change", () => {
+  const sel = app.selected;
+  if (!sel || sel === camGizmo) return;
+  const on = playerCheck.checked;
+  const prev = objects.find(o => o.userData.isPlayer && o !== sel) || null;
+  const apply = () => {
+    if (on && prev) prev.userData.isPlayer = false;
+    sel.userData.isPlayer = on;
+  };
+  const revert = () => {
+    sel.userData.isPlayer = !on;
+    if (on && prev) prev.userData.isPlayer = true;
+  };
+  apply();
+  pushCommand({
+    undo: () => { revert(); syncAfterEdit(sel); },
+    redo: () => { apply();  syncAfterEdit(sel); },
+  });
+});
+
+/* --- 移動速度 --- */
+let pendSpeed = null;
+speedInput.addEventListener("focus", () => {
+  if (app.selected) pendSpeed = { obj: app.selected, before: app.selected.userData.moveSpeed ?? 2.5 };
+});
+speedInput.addEventListener("input", () => {
+  const sel = app.selected;
+  if (!sel) return;
+  const v = parseFloat(speedInput.value);
+  if (!isNaN(v) && v > 0) sel.userData.moveSpeed = v;
+});
+speedInput.addEventListener("change", () => {
+  if (pendSpeed && pendSpeed.obj === app.selected) {
+    const { obj, before } = pendSpeed;
+    const after = obj.userData.moveSpeed ?? 2.5;
+    if (before !== after) pushCommand({
+      undo: () => { obj.userData.moveSpeed = before; syncAfterEdit(obj); },
+      redo: () => { obj.userData.moveSpeed = after;  syncAfterEdit(obj); },
+    });
+  }
+  pendSpeed = null;
+});
 
 // Undo/Redo後にInspector表示を最新化する
 function syncAfterEdit(obj) {

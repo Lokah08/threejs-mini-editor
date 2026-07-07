@@ -9,6 +9,7 @@ import { updateGizmoFrame } from "./gizmo.js";
 import { updateOverlay } from "./ui.js";
 import { pushAdd, pushCommand } from "./history.js";
 import { importGLBFromBase64 } from "./io.js";
+import { updatePlay } from "./play.js";
 import "./inspector.js";
 import "./controls.js";
 import "./hierarchy.js";
@@ -16,6 +17,7 @@ import "./hierarchy.js";
 /* ===== Assets: models / textures クリック ===== */
 document.querySelectorAll("[data-add]").forEach(el => {
   el.addEventListener("click", () => {
+    if (app.playing) return;   // 再生中は編集不可
     const mesh = addPrimitive(el.dataset.add);
     pushAdd(mesh);
     updateOverlay();
@@ -30,6 +32,7 @@ function applyTexture(obj, kind) {
 }
 document.querySelectorAll("[data-tex]").forEach(el => {
   el.addEventListener("click", () => {
+    if (app.playing) return;   // 再生中は編集不可
     const sel = app.selected;
     if (!sel || sel === camGizmo || !sel.material) {
       alert("先に Scene View でメッシュを選択してください");
@@ -75,6 +78,7 @@ async function duplicateSelected() {
   updateOverlay();
 }
 window.addEventListener("keydown", e => {
+  if (app.playing) return;   // 再生中は編集操作を無効化
   if (/INPUT|TEXTAREA/.test(document.activeElement.tagName)) return;
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "d") {
     e.preventDefault();   // ブラウザのブックマーク追加を抑止
@@ -93,8 +97,10 @@ new ResizeObserver(resize).observe(wrap);
 resize();
 
 /* ===== メインループ ===== */
+const clock = new THREE.Clock();
 function animate() {
   requestAnimationFrame(animate);
+  updatePlay(clock.getDelta());   // 再生モード (WASD移動 + クリップ再生)
 
   // Main Camera ギズモの姿勢を gameCam に同期
   gameCam.position.copy(camGizmo.position);
