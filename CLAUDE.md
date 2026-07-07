@@ -56,11 +56,16 @@ ES Modulesのためファイル直開き (file://) では動かない。
 - クリップ自動再生 (`userData.autoClip` にクリップ名): 非プレイヤーのオブジェクトを
   再生モード中ループ再生。InspectorのCharacterセクションで選択。停止時に復元。
   scene.json は version 5 (v3: isPlayer/moveSpeed, v4: camera.playMode, v5: autoClip)
+- リグ付き (ボーン/スキン) モデルのプレイヤー動作は検証済み (Mixamoマネキンで確認、
+  エディタ側の変更は不要だった)。アセット準備の定型手順:
+  Mixamoから Walking (In Place・With Skin) と Idle (Without Skin) をFBX Binaryで取得 →
+  BlenderでWalkingをインポートしアクション名を "walk" にリネーム → Idleを追加インポートして
+  アクション名を "idle" に → 両アクションをメインアーマチュアのNLAトラックに積む (muteでよい) →
+  Idle由来の余分なアーマチュアを削除 → glTF (GLB, export_animation_mode='ACTIONS') で書き出し。
+  クリップ名が "walk" でない場合も先頭クリップが歩きとして使われる (play.js のフォールバック)
 
 ## 今後の候補 (未実装)
 
 - Hierarchyの親子関係・グループ化 (scene.json version 6 が必要)
 - ライトをオブジェクトとして配置・編集
-- リグ付き (ボーン/スキン) モデルのプレイヤー対応の検証
-  (Mixamo等はクリップ名・縮尺・向きの調整が必要になる見込み)
 - 再生モードの拡張 (当たり判定、テクスチャアニメーション)
