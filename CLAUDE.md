@@ -53,10 +53,14 @@ ES Modulesのためファイル直開き (file://) では動かない。
 - カメラの再生中挙動 (Main CameraのInspectorで選択、`camGizmo.userData.playMode`):
   "fixed" 固定 / "follow" 追従 (開始時の構図を保ち位置をlerp) /
   "lookat" 注視 (位置固定でプレイヤーへquaternionをslerp)。停止時はカメラも復元。
-  scene.json は version 4 (v3: isPlayer/moveSpeed, v4: camera.playMode)
+- クリップ自動再生 (`userData.autoClip` にクリップ名): 非プレイヤーのオブジェクトを
+  再生モード中ループ再生。InspectorのCharacterセクションで選択。停止時に復元。
+  scene.json は version 5 (v3: isPlayer/moveSpeed, v4: camera.playMode, v5: autoClip)
 
 ## 今後の候補 (未実装)
 
-- Hierarchyの親子関係・グループ化 (scene.json version 4 が必要)
+- Hierarchyの親子関係・グループ化 (scene.json version 6 が必要)
 - ライトをオブジェクトとして配置・編集
-- 再生モードの拡張 (追従カメラ、当たり判定、プレイヤー以外のクリップ自動再生)
+- リグ付き (ボーン/スキン) モデルのプレイヤー対応の検証
+  (Mixamo等はクリップ名・縮尺・向きの調整が必要になる見込み)
+- 再生モードの拡張 (当たり判定、テクスチャアニメーション)

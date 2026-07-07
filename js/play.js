@@ -13,6 +13,7 @@ const state = {
   snapshot: null, camSnapshot: null, camOffset: null,
   groundY: 0,
   keys: {}, vy: 0, grounded: true,
+  extras: [],   // 自動再生クリップを持つ非プレイヤーの { mixer, snapshot }
 };
 
 // カメラ更新用のテンポラリ (毎フレームのnew回避)
@@ -67,6 +68,19 @@ export function startPlay() {
     fade(state.idle);
   }
 
+  // 自動再生クリップ指定のある非プレイヤーをループ再生 (バックダンサー)
+  state.extras = [];
+  for (const o of objects) {
+    if (o === player) continue;
+    const name = o.userData.autoClip;
+    if (!name) continue;
+    const clip = THREE.AnimationClip.findByName(o.userData.clips || [], name);
+    if (!clip) continue;
+    const mixer = new THREE.AnimationMixer(o);
+    mixer.clipAction(clip).play();
+    state.extras.push({ mixer, snapshot: snapshotPose(o) });
+  }
+
   select(null);
   app.playing = true;
   btn.textContent = "■ 停止";
@@ -79,6 +93,11 @@ export function stopPlay() {
   if (state.mixer) state.mixer.stopAllAction();
   if (state.snapshot) restorePose(state.snapshot);
   if (state.camSnapshot) restorePose(state.camSnapshot);
+  for (const ex of state.extras) {
+    ex.mixer.stopAllAction();
+    restorePose(ex.snapshot);
+  }
+  state.extras = [];
   state.mixer = null; state.walk = null; state.idle = null; state.current = null;
   state.player = null; state.snapshot = null; state.camSnapshot = null; state.camOffset = null;
   app.playing = false;
@@ -124,6 +143,7 @@ export function updatePlay(dt) {
     fade(moving ? state.walk : state.idle);
     state.mixer.update(dt);
   }
+  for (const ex of state.extras) ex.mixer.update(dt);
 
   /* --- カメラの再生中挙動 (Main Camera の Inspector で設定) --- */
   const camMode = camGizmo.userData.playMode || "fixed";

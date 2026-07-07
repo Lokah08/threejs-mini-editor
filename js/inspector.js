@@ -16,7 +16,7 @@ const scaleSection = document.getElementById("scale-section");
 const playerSection = document.getElementById("player-section");
 const playerCheck  = document.getElementById("obj-player");
 const speedInput   = document.getElementById("obj-speed");
-const clipsLabel   = document.getElementById("obj-clips");
+const autoClipSelect = document.getElementById("obj-autoclip");
 const bindInputs   = [...document.querySelectorAll("[data-bind]")];
 
 const KIND_LABELS = { glb: "Imported Model (GLB)" };
@@ -58,8 +58,18 @@ export function refreshInspector() {
   if (sel !== camGizmo) {
     playerCheck.checked = !!sel.userData.isPlayer;
     speedInput.value = sel.userData.moveSpeed ?? 2.5;
+    // 自動再生クリップの選択肢を持っているクリップから作る
     const clips = sel.userData.clips || [];
-    clipsLabel.textContent = "クリップ: " + (clips.length ? clips.map(c => c.name).join(", ") : "なし");
+    autoClipSelect.innerHTML = "";
+    if (clips.length) {
+      autoClipSelect.disabled = false;
+      autoClipSelect.append(new Option("(なし)", ""));
+      for (const c of clips) autoClipSelect.append(new Option(c.name, c.name));
+      autoClipSelect.value = sel.userData.autoClip || "";
+    } else {
+      autoClipSelect.disabled = true;
+      autoClipSelect.append(new Option("(クリップなし)", ""));
+    }
   }
 }
 
@@ -173,6 +183,20 @@ playerCheck.addEventListener("change", () => {
   pushCommand({
     undo: () => { revert(); syncAfterEdit(sel); },
     redo: () => { apply();  syncAfterEdit(sel); },
+  });
+});
+
+/* --- 自動再生クリップ (再生モードでループ再生。バックダンサー用) --- */
+autoClipSelect.addEventListener("change", () => {
+  const sel = app.selected;
+  if (!sel || sel === camGizmo) return;
+  const before = sel.userData.autoClip || "";
+  const after = autoClipSelect.value;
+  if (before === after) return;
+  sel.userData.autoClip = after;
+  pushCommand({
+    undo: () => { sel.userData.autoClip = before; syncAfterEdit(sel); },
+    redo: () => { sel.userData.autoClip = after;  syncAfterEdit(sel); },
   });
 });
 
