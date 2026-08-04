@@ -3,6 +3,10 @@
 import * as THREE from "three";
 import { objects, app, camGizmo, select } from "./state.js";
 import { setViewMode, updateOverlay } from "./ui.js";
+import {
+  compPlayStart, compUpdate, compPlayStop,
+  hasMovementComponent, hasTouchableComponent, compCollectibleCount,
+} from "./components.js";
 
 const btn = document.getElementById("btn-play");
 const SPEED_DEFAULT = 2.5;
@@ -12,13 +16,18 @@ const state = {
   player: null, mixer: null,
   walk: null, idle: null, current: null,
   snapshot: null, camSnapshot: null, camOffset: null,
-  groundY: 0,
+  groundY: 0, footOff: 0,
   keys: {}, vy: 0, grounded: true,
   extras: [],      // 自動再生クリップを持つ非プレイヤーの { mixer, snapshot }
   obstacles: [],   // 当たり判定用のAABB (メッシュ単位のBox3)
   colR: 0.2, colH: 1.5,   // プレイヤーの当たり判定の半径と身長
   hidden: [],      // 再生中に非表示にしたオブジェクト (停止時に戻す)
   triggers: [],    // トリガーゾーン { box, name, inside }
+  compSnapshots: [],   // コンポーネント持ちオブジェクトのポーズ (停止時に復元)
+  dynamicObs: [],      // 動くオブジェクトのAABB { mesh, box } (毎フレーム更新)
+  startPos: null,      // リスポーン地点 (再生開始時のプレイヤー位置)
+  collected: 0, collectTotal: 0,
+  ride: null,          // 乗っている動く床 { obj, local } (床と一緒に動く)
 };
 
 /* --- トリガー通過などのお知らせ表示 --- */
@@ -60,7 +69,8 @@ function collides(x, y, z) {
   const minX = x - state.colR, maxX = x + state.colR;
   const minZ = z - state.colR, maxZ = z + state.colR;
   const bottom = y + STEP, top = y + state.colH;   // 低い段差は足元扱いで無視
-  for (const b of state.obstacles) {
+  for (const e of state.obstacles) {
+    const b = e.box;
     if (maxX <= b.min.x || minX >= b.max.x) continue;
     if (maxZ <= b.min.z || minZ >= b.max.z) continue;
     if (b.max.y <= bottom || b.min.y >= top) continue;   // 段差以下 or 頭上
@@ -69,15 +79,34 @@ function collides(x, y, z) {
   return false;
 }
 
-/* --- 足元の支持面の高さ (障害物の上に乗れる。無ければ地面) --- */
-function supportHeightAt(x, z, y) {
-  let g = state.groundY;
-  for (const b of state.obstacles) {
-    if (x + state.colR <= b.min.x || x - state.colR >= b.max.x) continue;
-    if (z + state.colR <= b.min.z || z - state.colR >= b.max.z) continue;
-    if (b.max.y <= y + STEP && b.max.y > g) g = b.max.y;   // 足元以下で一番高い面
+/* --- 足元の支持面をレイキャストで求める (円形の床の縁も実形状どおりに判定) ---
+   戻り値 { y, mesh }: 支持面が無ければ y = -Infinity (奈落) */
+const _rayOrigin = new THREE.Vector3();
+const _rayDown = new THREE.Vector3(0, -1, 0);
+const _raycaster = new THREE.Raycaster();
+function supportAt(x, z, y) {
+  _rayOrigin.set(x, y + STEP, z);
+  let best = -Infinity, bestMesh = null;
+  for (const e of state.obstacles) {
+    const b = e.box;
+    if (x <= b.min.x || x >= b.max.x) continue;   // 中心点で候補を絞る
+    if (z <= b.min.z || z >= b.max.z) continue;
+    if (b.min.y > y + STEP) continue;
+    _raycaster.set(_rayOrigin, _rayDown);
+    const hits = _raycaster.intersectObject(e.mesh, false);
+    if (hits.length) {
+      const hy = _rayOrigin.y - hits[0].distance;
+      if (hy > best) { best = hy; bestMesh = e.mesh; }
+    }
   }
-  return g;
+  return { y: best, mesh: bestMesh };
+}
+
+// メッシュから objects 配列上のルートオブジェクトを辿る (動く床の乗車判定用)
+function rootOf(m) {
+  let o = m;
+  while (o && !objects.includes(o)) o = o.parent;
+  return o;
 }
 
 /* --- クリップのクロスフェード --- */
@@ -98,16 +127,18 @@ export function startPlay() {
   state.snapshot = snapshotPose(player);
   state.camSnapshot = snapshotPose(camGizmo);   // カメラも停止時に復元する
   state.camOffset = camGizmo.position.clone().sub(player.position);   // 追従用: 開始時の構図
-  state.groundY = player.position.y;
   state.keys = {}; state.vy = 0; state.grounded = true;
 
   // 当たり判定の準備: プレイヤーの寸法と、障害物のAABB一覧 (メッシュ単位)
   const pbox = new THREE.Box3().setFromObject(player);
   state.colH = Math.max(pbox.max.y - pbox.min.y, 0.2);
   state.colR = Math.max(Math.min(pbox.max.x - pbox.min.x, pbox.max.z - pbox.min.z) * 0.4, 0.1);
+  state.footOff = player.position.y - pbox.min.y;    // 原点から足元までの距離 (Cube等は中心原点)
+  state.groundY = player.position.y - state.footOff; // 開始時の足元の高さ (KillZ基準)
   state.obstacles = [];
   state.triggers = [];
   state.hidden = [];
+  state.dynamicObs = [];
   for (const o of objects) {
     if (o === player || o === camGizmo) continue;
     o.updateWorldMatrix(true, true);
@@ -115,11 +146,18 @@ export function startPlay() {
       // トリガー: 当たり判定なし・再生中非表示・通過を検知
       const b = new THREE.Box3().setFromObject(o);
       if (!b.isEmpty()) state.triggers.push({ box: b, name: o.name, inside: false });
+    } else if (hasTouchableComponent(o)) {
+      // Collectible / Trap は当たり判定なし (すり抜けて接触判定だけする)
     } else {
+      const dynamic = hasMovementComponent(o);   // Rotator/Mover持ちはAABBを毎フレーム更新
       o.traverse(m => {
         if (m.isMesh) {
           const b = new THREE.Box3().setFromObject(m);
-          if (!b.isEmpty()) state.obstacles.push(b);
+          if (!b.isEmpty()) {
+            const entry = { mesh: m, box: b };
+            state.obstacles.push(entry);
+            if (dynamic) state.dynamicObs.push(entry);
+          }
         }
       });
     }
@@ -128,6 +166,13 @@ export function startPlay() {
       state.hidden.push(o);
     }
   }
+
+  // コンポーネント起動 + 対象オブジェクトのポーズ保存 + リスポーン地点
+  state.startPos = player.position.clone();
+  const compObjs = [...new Set(compPlayStart(objects, player))];
+  state.compSnapshots = compObjs.map(o => snapshotPose(o));
+  state.collected = 0;
+  state.collectTotal = compCollectibleCount();
 
   const clips = player.userData.clips || [];
   if (clips.length) {
@@ -169,6 +214,11 @@ export function stopPlay() {
     ex.mixer.stopAllAction();
     restorePose(ex.snapshot);
   }
+  compPlayStop();   // Collectibleで消えた物を戻す
+  for (const list of state.compSnapshots) restorePose(list);   // 回転/移動した物を戻す
+  state.compSnapshots = [];
+  state.dynamicObs = [];
+  state.ride = null;
   for (const o of state.hidden) o.visible = true;
   state.hidden = [];
   state.extras = [];
@@ -184,10 +234,29 @@ export function stopPlay() {
 }
 
 /* --- 毎フレーム更新 (main.js のループから呼ぶ) --- */
+function respawn(msg) {
+  const p = state.player;
+  if (!p) return;
+  p.position.copy(state.startPos);
+  state.vy = 0;
+  state.grounded = true;
+  state.ride = null;
+  if (msg) showToast(msg);
+}
+
 export function updatePlay(dt) {
   if (!app.playing || !state.player) return;
   const p = state.player;
   const k = state.keys;
+
+  // 動くオブジェクト (Rotator/Mover) の当たり判定を最新の位置に追従させる
+  for (const d of state.dynamicObs) d.box.setFromObject(d.mesh);
+
+  // 動く床に乗っていたら、床の動きと一緒に運ばれる (回転床・移動床)
+  if (state.ride && state.grounded) {
+    state.ride.obj.updateWorldMatrix(true, false);
+    p.position.copy(state.ride.obj.localToWorld(state.ride.local.clone()));
+  }
 
   let dx = 0, dz = 0;
   if (k["w"] || k["arrowup"])    dz -= 1;
@@ -196,6 +265,8 @@ export function updatePlay(dt) {
   if (k["d"] || k["arrowright"]) dx += 1;
   const moving = dx !== 0 || dz !== 0;
 
+  const footY = () => p.position.y - state.footOff;   // 足元の高さ (原点が中心の形状にも対応)
+
   if (moving) {
     const len = Math.hypot(dx, dz);
     const sp = p.userData.moveSpeed || SPEED_DEFAULT;
@@ -203,38 +274,64 @@ export function updatePlay(dt) {
     const nz = p.position.z + (dz / len) * sp * dt;
     // 軸ごとに判定して、壁に斜めに当たったときは沿ってスライドする。
     // 既にめり込んでいる場合 (stuck) は脱出を優先して移動を許可する。
-    const stuck = collides(p.position.x, p.position.y, p.position.z);
-    if (stuck || !collides(nx, p.position.y, p.position.z)) p.position.x = nx;
-    if (stuck || !collides(p.position.x, p.position.y, nz)) p.position.z = nz;
+    const fy = footY();
+    const stuck = collides(p.position.x, fy, p.position.z);
+    if (stuck || !collides(nx, fy, p.position.z)) p.position.x = nx;
+    if (stuck || !collides(p.position.x, fy, nz)) p.position.z = nz;
     p.rotation.y = Math.atan2(dx, dz);
   }
 
-  // 重力と着地: 障害物の上にも乗れる (足元の支持面を毎フレーム求める)
-  const support = supportHeightAt(p.position.x, p.position.z, p.position.y);
+  // 重力と着地: レイキャストで足元の支持面を求める (障害物の上にも乗れる)
+  const sup = supportAt(p.position.x, p.position.z, footY());
+  const support = sup.y;
   if (state.grounded) {
-    if (p.position.y > support + 0.001) {
+    if (support === -Infinity || footY() > support + 0.001) {
       state.grounded = false;   // 端から歩き出した → 落下開始
     } else {
-      p.position.y = support;   // 低い段差は登り降りに追従
+      p.position.y = support + state.footOff;   // 低い段差は登り降りに追従
     }
   }
   if (k[" "] && state.grounded) { state.vy = 4.5; state.grounded = false; }
   if (!state.grounded) {
     p.position.y += state.vy * dt;
     state.vy -= 12 * dt;
-    if (state.vy <= 0 && p.position.y <= support) {
-      p.position.y = support;   // 落下中に支持面へ着地 (机の上などもOK)
+    if (state.vy <= 0 && footY() <= support) {
+      p.position.y = support + state.footOff;   // 落下中に支持面へ着地
       state.vy = 0;
       state.grounded = true;
     }
   }
+
+  // 立っている床が動く床 (Rotator/Mover持ち) なら「乗車」を記録する
+  state.ride = null;
+  if (state.grounded && sup.mesh) {
+    const root = rootOf(sup.mesh);
+    if (root && hasMovementComponent(root)) {
+      root.updateWorldMatrix(true, false);
+      state.ride = { obj: root, local: root.worldToLocal(p.position.clone()) };
+    }
+  }
+
+  // コンポーネントの更新と接触判定 (Rotator/Mover/Collectible/Trap)
+  compUpdate(dt, {
+    px: p.position.x, py: footY(), pz: p.position.z,
+    colR: state.colR, colH: state.colH,
+    respawn,
+    collect: () => {
+      state.collected++;
+      showToast(`💎 ${state.collected} / ${state.collectTotal}`);
+    },
+  });
+
+  // 奈落 (KillZ): スタート地点よりだいぶ下に落ちたらリスポーン
+  if (footY() < state.groundY - 12) respawn("💀 落下! スタートに戻る");
 
   // トリガー通過の検知 (入った瞬間に一度だけ通知、出たらリセット)
   for (const t of state.triggers) {
     const inside = !(
       p.position.x + state.colR <= t.box.min.x || p.position.x - state.colR >= t.box.max.x ||
       p.position.z + state.colR <= t.box.min.z || p.position.z - state.colR >= t.box.max.z ||
-      t.box.max.y <= p.position.y || t.box.min.y >= p.position.y + state.colH
+      t.box.max.y <= footY() || t.box.min.y >= footY() + state.colH
     );
     if (inside && !t.inside) showToast(`🚩 ${t.name} を通過!`);
     t.inside = inside;

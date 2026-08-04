@@ -33,6 +33,18 @@ ES Modulesのためファイル直開き (file://) では動かない。
   開始時にプレイヤーとカメラのポーズをスナップショットし、停止時に完全復元する。
   クリップは "walk" / "idle" を名前で探す (walkが無ければ先頭クリップ)。
 
+- コンポーネントシステムは `js/components.js`。各オブジェクトの `userData.components` に
+  `[{ type, ...パラメータ }]` の配列で保持 (パラメータ省略時はデフォルト値)。
+  種類は `COMPONENT_TYPES` に登録: params定義 (InspectorのUIが自動生成される) と
+  ライフサイクル (`start` / `update` / `onTouch`)。touchable: true のものは当たり判定から
+  除外され、プレイヤー接触で `onTouch` が呼ばれる。実行系は再生モード中のみ動作し、
+  ポーズは play.js が復元、Collectible等の非表示化は compPlayStop が復元する。
+  新しい振る舞いは COMPONENT_TYPES への追加だけで完結する。
+- アセットパック (`assets/` フォルダ、gitignore対象) は `assets/index.json` の目録で
+  Assetsパネルに一覧表示 (js/assets.js)。読み込みは `importAssetGLB(path)` で、
+  scene.json には `assetPath` 参照で保存される (Base64埋め込みなしで軽量)。
+  目録はフォルダにGLBを追加したら再生成する (files配列にファイル名を足すだけでもよい)。
+
 ## 規約
 
 - UI文言は日本語
@@ -67,13 +79,22 @@ ES Modulesのためファイル直開き (file://) では動かない。
   プレイヤーの移動を軸分離で判定 (壁ずりスライド)。STEP=0.35 以下の段差は乗り越え可、
   ジャンプ中は足元が上がるので低い障害物を飛び越せる。めり込み時は脱出方向の移動を許可。
   障害物のAABBは再生開始時に固定 (動く障害物には追従しない)
-- 障害物の上に乗れる (supportHeightAt で足元の支持面を毎フレーム計算)。
-  端から歩き出すと落下、落下中に支持面へ着地。低い段差は登り降りに自動追従
+- 障害物の上に乗れる (supportAt: 真下へのレイキャストで足元の支持面を毎フレーム計算。
+  AABBだと円形の床の四隅に見えない張り出しができるため、支持面判定のみ実形状で行う)。
+  端から歩き出すと落下、落下中に支持面へ着地。低い段差は登り降りに自動追従。
+  支持面が無ければ -Infinity (奈落) で、プレイヤーの足元原点補正は state.footOff
+  (Cube等の中心原点でも正しく接地する)
+- 動く床 (Rotator/Mover持ち) に立つと「乗車」(state.ride) し、床のローカル座標を保持して
+  回転・移動に追従する。降りるか空中に出ると解除
 - 再生中は非表示 (`userData.hideInPlay`): 見えない壁用。再生中 visible=false、当たり判定は残る
 - トリガー (`userData.isTrigger`): 当たり判定なし・再生中非表示・プレイヤーが入った瞬間に
   トースト表示 (`🚩 {name} を通過!`)。出て再度入ると再通知。ゴール/チェックポイント用。
   どちらもInspectorのPlay Settingsセクションで設定、scene.json は version 6
 - 編集QoL: F = 選択オブジェクトへ視点フォーカス、Delete = 選択オブジェクトを削除 (Undo可)
+- コンポーネント4種: Rotator (回転)、Mover (往復移動)、Collectible (取ると消えて
+  💎カウント表示)、Trap (触れるとリスポーン)。Rotator/Mover持ちのAABBは毎フレーム追従。
+  奈落 (KillZ): スタートより12下に落ちるとリスポーン。scene.json は version 7
+  (assetPath / components を追加)
 
 ## 今後の候補 (未実装)
 

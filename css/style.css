@@ -150,6 +150,26 @@ body{
   color:var(--text);border-radius:4px;padding:3px 4px;font-size:11px;outline:none;
 }
 .irow select:focus{border-color:var(--accent)}
+/* ===== Components ===== */
+.comp{
+  background:#1e2126;border:1px solid #14161a;border-radius:5px;
+  padding:6px 7px;margin-bottom:6px;
+}
+.comp .chead{
+  display:flex;align-items:center;margin-bottom:5px;
+}
+.comp .cname{font-weight:600;color:#a5c8ef;font-size:11px;flex:1}
+.comp .cdel{
+  background:none;border:none;color:var(--dim);cursor:pointer;
+  font-size:12px;padding:0 3px;
+}
+.comp .cdel:hover{color:#ff8a7a}
+.minibtn{
+  background:var(--panel2);border:1px solid var(--line);color:var(--text);
+  border-radius:4px;padding:3px 10px;cursor:pointer;font-size:11px;flex:0 0 auto;
+}
+.minibtn:hover{border-color:var(--accent);color:#e8eaee}
+
 .axis-x{color:#ff6b6b !important}
 .axis-y{color:#8bd450 !important}
 .axis-z{color:#5aa2ff !important}

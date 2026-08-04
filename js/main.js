@@ -8,11 +8,12 @@ import { addPrimitive, makeTexture } from "./primitives.js";
 import { updateGizmoFrame } from "./gizmo.js";
 import { updateOverlay } from "./ui.js";
 import { pushAdd, pushCommand, pushDelete } from "./history.js";
-import { importGLBFromBase64 } from "./io.js";
+import { importGLBFromBase64, importAssetGLB } from "./io.js";
 import { updatePlay } from "./play.js";
 import "./inspector.js";
 import "./controls.js";
 import "./hierarchy.js";
+import "./assets.js";
 
 /* ===== Assets: models / textures クリック ===== */
 document.querySelectorAll("[data-add]").forEach(el => {
@@ -55,7 +56,13 @@ async function duplicateSelected() {
   if (!src || src === camGizmo) return;
 
   let copy;
-  if (src.userData.kind === "glb") {
+  if (src.userData.assetPath) {
+    // アセット参照はパスから再インポート (キャッシュ済みで速い)
+    copy = await importAssetGLB(src.userData.assetPath, src.name + " (copy)");
+    copy.position.copy(src.position);
+    copy.quaternion.copy(src.quaternion);
+    copy.scale.copy(src.scale);
+  } else if (src.userData.kind === "glb") {
     // GLBは保持している元バイナリから再インポート
     copy = await importGLBFromBase64(src.userData.glbBase64, src.name + " (copy)");
     copy.position.copy(src.position);
@@ -70,6 +77,10 @@ async function duplicateSelected() {
       color: src.material.color.clone(),
       texKind: src.userData.texKind,
     });
+  }
+  // コンポーネント設定も複製する
+  if (src.userData.components?.length) {
+    copy.userData.components = JSON.parse(JSON.stringify(src.userData.components));
   }
   copy.position.x += 0.4;   // 重ならないよう少しずらす
   copy.position.z += 0.4;

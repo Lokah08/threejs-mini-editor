@@ -39,6 +39,10 @@
           <div class="asset" id="glb-import"><span class="ico">📥</span>GLBを開く…<small>.glb</small></div>
         </div>
       </div>
+      <div class="folder">
+        <div class="fname">📁 assets/ (パック)</div>
+        <div class="items" id="asset-glb-list"></div>
+      </div>
       <div class="folder open">
         <div class="fname">📁 textures/</div>
         <div class="items">
@@ -132,6 +136,14 @@
           <div class="irow"><label style="width:auto;font-family:inherit">プレイヤーとして操作</label><input type="checkbox" id="obj-player" style="flex:0 0 auto;margin-left:auto"></div>
           <div class="irow"><label style="width:auto;font-family:inherit">移動速度</label><input type="number" step="0.1" min="0.1" id="obj-speed"></div>
           <div class="irow" style="margin-bottom:0"><label style="width:auto;font-family:inherit">自動再生</label><select id="obj-autoclip"></select></div>
+        </div>
+        <div class="isection" id="comp-section">
+          <h3>Components</h3>
+          <div id="comp-list"></div>
+          <div class="irow" style="margin-bottom:0">
+            <select id="comp-add-select"></select>
+            <button id="comp-add-btn" class="minibtn">追加</button>
+          </div>
         </div>
         <div class="isection" id="playset-section">
           <h3>Play Settings</h3>

@@ -13,7 +13,7 @@ import { stopPlay } from "./play.js";
 ============================================================ */
 export function sceneToJSON() {
   return JSON.stringify({
-    meta: { app: "MiniEditor", version: 6 },   // v3-5: isPlayer/moveSpeed/camera.playMode/autoClip, v6: hideInPlay/isTrigger
+    meta: { app: "MiniEditor", version: 7 },   // v6: hideInPlay/isTrigger, v7: assetPath/components
     camera: {
       name: camGizmo.name,
       position: camGizmo.position.toArray(),
@@ -34,7 +34,10 @@ export function sceneToJSON() {
       if (o.userData.autoClip) base.autoClip = o.userData.autoClip;
       if (o.userData.hideInPlay) base.hideInPlay = true;
       if (o.userData.isTrigger) base.isTrigger = true;
-      if (o.userData.kind === "glb") {
+      if (o.userData.components?.length) base.components = o.userData.components;   // v7
+      if (o.userData.assetPath) {
+        base.assetPath = o.userData.assetPath;   // v7: アセットはパス参照 (軽量)
+      } else if (o.userData.kind === "glb") {
         base.glbBase64 = o.userData.glbBase64;   // 元のGLBを丸ごと埋め込む (クリップ含む)
       } else {
         base.color = "#" + o.material.color.getHexString();
@@ -57,7 +60,12 @@ export async function loadJSON(text) {
 
   for (const d of (data.objects || [])) {
     let obj;
-    if (d.kind === "glb" && d.glbBase64) {
+    if (d.assetPath) {                                   // v7: パス参照アセット
+      obj = await importAssetGLB(d.assetPath, d.name);
+      obj.position.fromArray(d.position);
+      obj.rotation.fromArray([...d.rotation, "XYZ"]);
+      obj.scale.fromArray(d.scale);
+    } else if (d.kind === "glb" && d.glbBase64) {
       obj = await importGLBFromBase64(d.glbBase64, d.name);
       obj.position.fromArray(d.position);
       obj.rotation.fromArray([...d.rotation, "XYZ"]);
@@ -73,6 +81,7 @@ export async function loadJSON(text) {
     if (d.autoClip) obj.userData.autoClip = d.autoClip;   // v5
     if (d.hideInPlay) obj.userData.hideInPlay = true;     // v6
     if (d.isTrigger) obj.userData.isTrigger = true;       // v6
+    if (d.components) obj.userData.components = d.components;   // v7
   }
   if (data.camera) {
     camGizmo.position.fromArray(data.camera.position);
@@ -134,6 +143,29 @@ async function importGLBFromBuffer(arrayBuffer, name) {
 }
 export async function importGLBFromBase64(b64, name) {
   return importGLBFromBuffer(base64ToBuffer(b64), name);
+}
+
+/* --- assets/ フォルダのGLBをパス参照でインポート (scene.jsonにはパスだけ保存) --- */
+const assetCache = new Map();   // path -> ArrayBuffer
+
+export async function importAssetGLB(path, name) {
+  let buf = assetCache.get(path);
+  if (!buf) {
+    const res = await fetch(path);
+    if (!res.ok) throw new Error(`アセットを読み込めません: ${path}`);
+    buf = await res.arrayBuffer();
+    assetCache.set(path, buf);
+  }
+  const gltf = await parseGLB(buf.slice(0));
+  const root = gltf.scene;
+  root.name = name || path.split("/").pop().replace(/\.glb$/i, "");
+  root.userData.kind = "glb";
+  root.userData.assetPath = path;   // Base64の代わりにパス参照
+  root.userData.clips = gltf.animations || [];
+  scene.add(root);
+  objects.push(root);
+  notifySceneChanged();
+  return root;
 }
 
 /* ============================================================

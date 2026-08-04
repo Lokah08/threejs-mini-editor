@@ -2,6 +2,7 @@
 import * as THREE from "three";
 import { app, camGizmo, gameCam, selBox, objects, onSelect, notifySceneChanged } from "./state.js";
 import { pushCommand, pushDelete, snapshotTransform, pushTransform } from "./history.js";
+import { COMPONENT_TYPES } from "./components.js";
 
 const inspEmpty    = document.getElementById("insp-empty");
 const inspContent  = document.getElementById("insp-content");
@@ -20,6 +21,15 @@ const autoClipSelect = document.getElementById("obj-autoclip");
 const playsetSection = document.getElementById("playset-section");
 const hidePlayCheck  = document.getElementById("obj-hideplay");
 const triggerCheck   = document.getElementById("obj-trigger");
+const compSection    = document.getElementById("comp-section");
+const compList       = document.getElementById("comp-list");
+const compAddSelect  = document.getElementById("comp-add-select");
+const compAddBtn     = document.getElementById("comp-add-btn");
+
+// 追加メニューは登録簿から一度だけ生成
+for (const [type, def] of Object.entries(COMPONENT_TYPES)) {
+  compAddSelect.append(new Option(def.label, type));
+}
 const bindInputs   = [...document.querySelectorAll("[data-bind]")];
 
 const KIND_LABELS = { glb: "Imported Model (GLB)" };
@@ -39,6 +49,7 @@ onSelect(obj => {
   camSection.style.display    = isCam ? "" : "none";
   playerSection.style.display  = isCam ? "none" : "";
   playsetSection.style.display = isCam ? "none" : "";
+  compSection.style.display    = isCam ? "none" : "";
   typeLabel.textContent = isCam ? "Camera (Game View の視点)"
                         : KIND_LABELS[obj.userData.kind] ?? `Mesh: ${obj.userData.kind}`;
   refreshInspector();
@@ -76,8 +87,99 @@ export function refreshInspector() {
     }
     hidePlayCheck.checked = !!sel.userData.hideInPlay;
     triggerCheck.checked  = !!sel.userData.isTrigger;
+    renderComponents(sel);
   }
 }
+
+/* --- Componentsセクション: userData.components からUIを自動生成 --- */
+function renderComponents(sel) {
+  compList.innerHTML = "";
+  const comps = sel.userData.components || [];
+  comps.forEach((c, index) => {
+    const def = COMPONENT_TYPES[c.type];
+    if (!def) return;
+    const box = document.createElement("div");
+    box.className = "comp";
+    const head = document.createElement("div");
+    head.className = "chead";
+    const cname = document.createElement("span");
+    cname.className = "cname";
+    cname.textContent = def.label;
+    const del = document.createElement("button");
+    del.className = "cdel";
+    del.textContent = "✕";
+    del.title = "コンポーネントを外す";
+    del.addEventListener("click", () => removeComponent(sel, index));
+    head.append(cname, del);
+    box.appendChild(head);
+
+    for (const [key, spec] of Object.entries(def.params)) {
+      const row = document.createElement("div");
+      row.className = "irow";
+      const label = document.createElement("label");
+      label.style.cssText = "width:auto;font-family:inherit";
+      label.textContent = spec.label ?? key;
+      let input;
+      if (spec.type === "select") {
+        input = document.createElement("select");
+        for (const opt of spec.options) input.append(new Option(opt, opt));
+        input.value = c[key] ?? spec.default;
+      } else if (spec.type === "checkbox") {
+        input = document.createElement("input");
+        input.type = "checkbox";
+        input.style.cssText = "flex:0 0 auto;margin-left:auto";
+        input.checked = c[key] ?? spec.default;
+      } else {
+        input = document.createElement("input");
+        input.type = "number";
+        input.step = "0.1";
+        input.value = c[key] ?? spec.default;
+      }
+      input.addEventListener("change", () => {
+        const before = c[key] ?? spec.default;
+        const after = spec.type === "checkbox" ? input.checked
+                    : spec.type === "number" ? (parseFloat(input.value) || spec.default)
+                    : input.value;
+        if (before === after) return;
+        c[key] = after;
+        pushCommand({
+          undo: () => { c[key] = before; syncAfterEdit(sel); },
+          redo: () => { c[key] = after;  syncAfterEdit(sel); },
+        });
+      });
+      row.append(label, input);
+      box.appendChild(row);
+    }
+    compList.appendChild(box);
+  });
+}
+
+function removeComponent(sel, index) {
+  const comps = sel.userData.components;
+  const removed = comps[index];
+  comps.splice(index, 1);
+  pushCommand({
+    undo: () => { comps.splice(index, 0, removed); syncAfterEdit(sel); },
+    redo: () => { comps.splice(index, 1); syncAfterEdit(sel); },
+  });
+  renderComponents(sel);
+}
+
+compAddBtn.addEventListener("click", () => {
+  const sel = app.selected;
+  if (!sel || sel === camGizmo) return;
+  const type = compAddSelect.value;
+  if (!COMPONENT_TYPES[type]) return;
+  if (!sel.userData.components) sel.userData.components = [];
+  const comps = sel.userData.components;
+  const entry = { type };   // パラメータは省略時デフォルト。編集したら値が入る
+  comps.push(entry);
+  pushCommand({
+    undo: () => { comps.splice(comps.indexOf(entry), 1); syncAfterEdit(sel); },
+    redo: () => { comps.push(entry); syncAfterEdit(sel); },
+  });
+  renderComponents(sel);
+});
 
 /* --- userDataのboolean設定をUndo対応で切り替える共通処理 --- */
 function bindFlagCheckbox(input, key) {

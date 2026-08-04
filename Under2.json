@@ -1,0 +1,607 @@
+{
+  "meta": {
+    "app": "MiniEditor",
+    "version": 7
+  },
+  "camera": {
+    "name": "Main Camera",
+    "position": [
+      -10.30482274776013,
+      5.571671257808008,
+      8.398989608043376
+    ],
+    "rotation": [
+      0.041316745171600174,
+      -0.45518961525001855,
+      0.0074588233053691205
+    ],
+    "fov": 60,
+    "playMode": "fixed"
+  },
+  "objects": [
+    {
+      "name": "circle_001",
+      "kind": "glb",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "components": [
+        {
+          "type": "Mover"
+        }
+      ],
+      "assetPath": "assets/Platformer_8_Underworld_glb/Separate_assets_glb/circle_001.glb"
+    },
+    {
+      "name": "circle_001",
+      "kind": "glb",
+      "position": [
+        0,
+        0,
+        -10.325998366001171
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "components": [
+        {
+          "type": "Rotator"
+        },
+        {
+          "type": "Rotator"
+        }
+      ],
+      "assetPath": "assets/Platformer_8_Underworld_glb/Separate_assets_glb/circle_001.glb"
+    },
+    {
+      "name": "circle_001",
+      "kind": "glb",
+      "position": [
+        0,
+        0,
+        -20.715997454892655
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "components": [
+        {
+          "type": "Mover"
+        }
+      ],
+      "assetPath": "assets/Platformer_8_Underworld_glb/Separate_assets_glb/circle_001.glb"
+    },
+    {
+      "name": "Cube_01",
+      "kind": "box",
+      "position": [
+        2.822134605818217,
+        1.1208060553373898,
+        -24.041779891025755
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "isPlayer": true,
+      "color": "#6aa7ff",
+      "texture": "none"
+    },
+    {
+      "name": "platform_001",
+      "kind": "glb",
+      "position": [
+        0,
+        -4.699499865441698,
+        35.17681737709047
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "assetPath": "assets/Platformer_8_Underworld_glb/Separate_assets_glb/platform_001.glb"
+    },
+    {
+      "name": "platform_001",
+      "kind": "glb",
+      "position": [
+        0.9629460714651312,
+        -4.921872228130849,
+        -33.44335003469797
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "assetPath": "assets/Platformer_8_Underworld_glb/Separate_assets_glb/platform_001.glb"
+    },
+    {
+      "name": "platform_002",
+      "kind": "glb",
+      "position": [
+        0.44524426444124465,
+        -4.814709703826436,
+        45.416166689024635
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "assetPath": "assets/Platformer_8_Underworld_glb/Separate_assets_glb/platform_002.glb"
+    },
+    {
+      "name": "platform_003",
+      "kind": "glb",
+      "position": [
+        1.862253665729639,
+        -2.6676000530028823,
+        -49.89703309650859
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "assetPath": "assets/Platformer_8_Underworld_glb/Separate_assets_glb/platform_003.glb"
+    },
+    {
+      "name": "platform_004",
+      "kind": "glb",
+      "position": [
+        -40.25022946626982,
+        0,
+        -36.46837594386433
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "assetPath": "assets/Platformer_8_Underworld_glb/Separate_assets_glb/platform_004.glb"
+    },
+    {
+      "name": "passage_001",
+      "kind": "glb",
+      "position": [
+        0.13732217336818486,
+        0,
+        6.02206191981103
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "assetPath": "assets/Platformer_8_Underworld_glb/Separate_assets_glb/passage_001.glb"
+    },
+    {
+      "name": "stairs_001",
+      "kind": "glb",
+      "position": [
+        2.111084154942045,
+        -4.468149479846158,
+        -42.30384191764243
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "assetPath": "assets/Platformer_8_Underworld_glb/Separate_assets_glb/stairs_001.glb"
+    },
+    {
+      "name": "ruins_road_002",
+      "kind": "glb",
+      "position": [
+        1.5734501748961858,
+        -1.115620042165709,
+        -73.53702488426754
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "assetPath": "assets/Platformer_8_Underworld_glb/Separate_assets_glb/ruins_road_002.glb"
+    },
+    {
+      "name": "ruins_road_001",
+      "kind": "glb",
+      "position": [
+        11.146736735847359,
+        26.46644439244772,
+        -133.88451282965065
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "assetPath": "assets/Platformer_8_Underworld_glb/Separate_assets_glb/ruins_road_001.glb"
+    },
+    {
+      "name": "ruins_road_003",
+      "kind": "glb",
+      "position": [
+        -3.9260337311332645,
+        0,
+        -143.6194979410513
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "assetPath": "assets/Platformer_8_Underworld_glb/Separate_assets_glb/ruins_road_003.glb"
+    },
+    {
+      "name": "obstacle_10_001",
+      "kind": "glb",
+      "position": [
+        14.253959229147876,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "assetPath": "assets/Platformer_8_Underworld_glb/Separate_assets_glb/obstacle_10_001.glb"
+    },
+    {
+      "name": "obstacle_11_001",
+      "kind": "glb",
+      "position": [
+        2.2018930373034706,
+        -16.60404526870338,
+        -73.4004507081965
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "assetPath": "assets/Platformer_8_Underworld_glb/Separate_assets_glb/obstacle_11_001.glb"
+    },
+    {
+      "name": "obstacle_1_001",
+      "kind": "glb",
+      "position": [
+        1.1465904588396691,
+        4.708135658511703,
+        -32.58063676977229
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "components": [
+        {
+          "type": "Trap"
+        }
+      ],
+      "assetPath": "assets/Platformer_8_Underworld_glb/Separate_assets_glb/obstacle_1_001.glb"
+    },
+    {
+      "name": "obstacle_3_001",
+      "kind": "glb",
+      "position": [
+        0.3759967420164365,
+        0.8331176867096763,
+        -127.05566556688447
+      ],
+      "rotation": [
+        0,
+        1.0596523954064738,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "components": [
+        {
+          "type": "Rotator"
+        }
+      ],
+      "assetPath": "assets/Platformer_8_Underworld_glb/Separate_assets_glb/obstacle_3_001.glb"
+    },
+    {
+      "name": "platform_001",
+      "kind": "glb",
+      "position": [
+        21.230073100990296,
+        0.13227383860755548,
+        -115.36421592102334
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "assetPath": "assets/Platformer_8_Underworld_glb/Separate_assets_glb/platform_001.glb"
+    },
+    {
+      "name": "platform_001",
+      "kind": "glb",
+      "position": [
+        -19.188303744843033,
+        0,
+        -117.26546894919647
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "assetPath": "assets/Platformer_8_Underworld_glb/Separate_assets_glb/platform_001.glb"
+    },
+    {
+      "name": "circle_002",
+      "kind": "glb",
+      "position": [
+        0.7038526593102752,
+        -0.09838481334589844,
+        -115.80221890759344
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "assetPath": "assets/Platformer_8_Underworld_glb/Separate_assets_glb/circle_002.glb"
+    },
+    {
+      "name": "obstacle_3_001",
+      "kind": "glb",
+      "position": [
+        -9.875834803735312,
+        1.096895364593152,
+        -115.41032238262241
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "components": [
+        {
+          "type": "Rotator"
+        }
+      ],
+      "assetPath": "assets/Platformer_8_Underworld_glb/Separate_assets_glb/obstacle_3_001.glb"
+    },
+    {
+      "name": "obstacle_3_001",
+      "kind": "glb",
+      "position": [
+        8.819983539729446,
+        -0.7580665955415924,
+        -114.7551701379813
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "components": [
+        {
+          "type": "Rotator"
+        }
+      ],
+      "assetPath": "assets/Platformer_8_Underworld_glb/Separate_assets_glb/obstacle_3_001.glb"
+    },
+    {
+      "name": "heart_001",
+      "kind": "glb",
+      "position": [
+        -0.6042084161985848,
+        1.3918764775964094,
+        -10.272498000298592
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "components": [
+        {
+          "type": "Rotator"
+        },
+        {
+          "type": "Collectible"
+        }
+      ],
+      "assetPath": "assets/Platformer_8_Underworld_glb/Separate_assets_glb/heart_001.glb"
+    },
+    {
+      "name": "coin_001",
+      "kind": "glb",
+      "position": [
+        0,
+        1.446335267932831,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "components": [
+        {
+          "type": "Rotator"
+        },
+        {
+          "type": "Collectible"
+        }
+      ],
+      "assetPath": "assets/Platformer_8_Underworld_glb/Separate_assets_glb/coin_001.glb"
+    },
+    {
+      "name": "key_001",
+      "kind": "glb",
+      "position": [
+        0,
+        1.1827460414750275,
+        -20.953949665161822
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "components": [
+        {
+          "type": "Mover"
+        },
+        {
+          "type": "Collectible"
+        }
+      ],
+      "assetPath": "assets/Platformer_8_Underworld_glb/Separate_assets_glb/key_001.glb"
+    }
+  ]
+}
