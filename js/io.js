@@ -13,7 +13,7 @@ import { stopPlay } from "./play.js";
 ============================================================ */
 export function sceneToJSON() {
   return JSON.stringify({
-    meta: { app: "MiniEditor", version: 7 },   // v6: hideInPlay/isTrigger, v7: assetPath/components
+    meta: { app: "MiniEditor", version: 9 },   // v8: tint, v9: collider
     camera: {
       name: camGizmo.name,
       position: camGizmo.position.toArray(),
@@ -35,6 +35,8 @@ export function sceneToJSON() {
       if (o.userData.hideInPlay) base.hideInPlay = true;
       if (o.userData.isTrigger) base.isTrigger = true;
       if (o.userData.components?.length) base.components = o.userData.components;   // v7
+      if (o.userData.tint && o.userData.tint !== "#ffffff") base.tint = o.userData.tint;   // v8
+      if (o.userData.collider && o.userData.collider !== "solid") base.collider = o.userData.collider;   // v9
       if (o.userData.assetPath) {
         base.assetPath = o.userData.assetPath;   // v7: アセットはパス参照 (軽量)
       } else if (o.userData.kind === "glb") {
@@ -82,6 +84,8 @@ export async function loadJSON(text) {
     if (d.hideInPlay) obj.userData.hideInPlay = true;     // v6
     if (d.isTrigger) obj.userData.isTrigger = true;       // v6
     if (d.components) obj.userData.components = d.components;   // v7
+    if (d.tint) applyTint(obj, d.tint);                          // v8
+    if (d.collider) obj.userData.collider = d.collider;          // v9
   }
   if (data.camera) {
     camGizmo.position.fromArray(data.camera.position);
@@ -143,6 +147,22 @@ async function importGLBFromBuffer(arrayBuffer, name) {
 }
 export async function importGLBFromBase64(b64, name) {
   return importGLBFromBuffer(base64ToBuffer(b64), name);
+}
+
+/* --- GLBモデルのティント (全メッシュの元色に指定色を掛ける。#ffffffで元通り) --- */
+const _tintColor = new THREE.Color();
+export function applyTint(root, hex) {
+  _tintColor.set(hex);
+  root.traverse(m => {
+    if (m.isMesh && m.material) {
+      const mats = Array.isArray(m.material) ? m.material : [m.material];
+      for (const mat of mats) {
+        if (!mat.userData.origColor) mat.userData.origColor = mat.color.clone();
+        mat.color.copy(mat.userData.origColor).multiply(_tintColor);
+      }
+    }
+  });
+  root.userData.tint = hex;
 }
 
 /* --- assets/ フォルダのGLBをパス参照でインポート (scene.jsonにはパスだけ保存) --- */

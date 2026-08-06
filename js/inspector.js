@@ -3,6 +3,7 @@ import * as THREE from "three";
 import { app, camGizmo, gameCam, selBox, objects, onSelect, notifySceneChanged } from "./state.js";
 import { pushCommand, pushDelete, snapshotTransform, pushTransform } from "./history.js";
 import { COMPONENT_TYPES } from "./components.js";
+import { applyTint } from "./io.js";
 
 const inspEmpty    = document.getElementById("insp-empty");
 const inspContent  = document.getElementById("insp-content");
@@ -21,6 +22,7 @@ const autoClipSelect = document.getElementById("obj-autoclip");
 const playsetSection = document.getElementById("playset-section");
 const hidePlayCheck  = document.getElementById("obj-hideplay");
 const triggerCheck   = document.getElementById("obj-trigger");
+const colliderSelect = document.getElementById("obj-collider");
 const compSection    = document.getElementById("comp-section");
 const compList       = document.getElementById("comp-list");
 const compAddSelect  = document.getElementById("comp-add-select");
@@ -44,7 +46,7 @@ onSelect(obj => {
   inspContent.style.display = "";
   const isCam = obj === camGizmo;
   const isGlb = obj.userData.kind === "glb";
-  matSection.style.display    = (isCam || isGlb) ? "none" : "";
+  matSection.style.display    = isCam ? "none" : "";   // GLBはティント(色掛け)として使う
   scaleSection.style.display  = isCam ? "none" : "";
   camSection.style.display    = isCam ? "" : "none";
   playerSection.style.display  = isCam ? "none" : "";
@@ -69,6 +71,7 @@ export function refreshInspector() {
     fovInput.value = gameCam.fov;
     camPlaySelect.value = camGizmo.userData.playMode || "fixed";
   }
+  else if (sel.userData.kind === "glb") colorInput.value = sel.userData.tint || "#ffffff";
   else if (sel.material) colorInput.value = "#" + sel.material.color.getHexString();
   if (sel !== camGizmo) {
     playerCheck.checked = !!sel.userData.isPlayer;
@@ -87,6 +90,7 @@ export function refreshInspector() {
     }
     hidePlayCheck.checked = !!sel.userData.hideInPlay;
     triggerCheck.checked  = !!sel.userData.isTrigger;
+    colliderSelect.value  = sel.userData.collider || "solid";
     renderComponents(sel);
   }
 }
@@ -199,6 +203,20 @@ function bindFlagCheckbox(input, key) {
 bindFlagCheckbox(hidePlayCheck, "hideInPlay");
 bindFlagCheckbox(triggerCheck, "isTrigger");
 
+/* --- 当たり判定の種類 (実体 / 床のみ / なし) --- */
+colliderSelect.addEventListener("change", () => {
+  const sel = app.selected;
+  if (!sel || sel === camGizmo) return;
+  const before = sel.userData.collider || "solid";
+  const after = colliderSelect.value;
+  if (before === after) return;
+  sel.userData.collider = after;
+  pushCommand({
+    undo: () => { sel.userData.collider = before; syncAfterEdit(sel); },
+    redo: () => { sel.userData.collider = after;  syncAfterEdit(sel); },
+  });
+});
+
 /* --- 名前 (focusで控えて、changeで履歴に積む) --- */
 let pendName = null;
 nameInput.addEventListener("focus", () => {
@@ -225,18 +243,32 @@ nameInput.addEventListener("change", () => {
 let pendColor = null;
 colorInput.addEventListener("input", () => {
   const sel = app.selected;
-  if (!sel || sel === camGizmo || !sel.material) return;
-  if (!pendColor || pendColor.obj !== sel) pendColor = { obj: sel, before: sel.material.color.getHex() };
-  sel.material.color.set(colorInput.value);
+  if (!sel || sel === camGizmo) return;
+  if (sel.userData.kind === "glb") {
+    // GLBはティント: 全メッシュの元色に掛け算 (#ffffffで元通り)
+    if (!pendColor || pendColor.obj !== sel) pendColor = { obj: sel, before: sel.userData.tint || "#ffffff", glb: true };
+    applyTint(sel, colorInput.value);
+  } else if (sel.material) {
+    if (!pendColor || pendColor.obj !== sel) pendColor = { obj: sel, before: sel.material.color.getHex() };
+    sel.material.color.set(colorInput.value);
+  }
 });
 colorInput.addEventListener("change", () => {
   if (pendColor && pendColor.obj === app.selected) {
-    const { obj, before } = pendColor;
-    const after = obj.material.color.getHex();
-    if (before !== after) pushCommand({
-      undo: () => { obj.material.color.setHex(before); syncAfterEdit(obj); },
-      redo: () => { obj.material.color.setHex(after);  syncAfterEdit(obj); },
-    });
+    const { obj, before, glb } = pendColor;
+    if (glb) {
+      const after = obj.userData.tint || "#ffffff";
+      if (before !== after) pushCommand({
+        undo: () => { applyTint(obj, before); syncAfterEdit(obj); },
+        redo: () => { applyTint(obj, after);  syncAfterEdit(obj); },
+      });
+    } else {
+      const after = obj.material.color.getHex();
+      if (before !== after) pushCommand({
+        undo: () => { obj.material.color.setHex(before); syncAfterEdit(obj); },
+        redo: () => { obj.material.color.setHex(after);  syncAfterEdit(obj); },
+      });
+    }
   }
   pendColor = null;
 });

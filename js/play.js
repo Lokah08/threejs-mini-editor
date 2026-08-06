@@ -10,7 +10,8 @@ import {
 
 const btn = document.getElementById("btn-play");
 const SPEED_DEFAULT = 2.5;
-const STEP = 0.35;   // この高さ以下の段差 (床タイル等) は乗り越えられる
+const STEP = 0.35;        // この高さ以下の段差 (床タイル等) は乗り越えられる
+const STEP_WALK = 0.7;    // コライダー「床のみ」(階段/スロープ) の段差許容
 
 const state = {
   player: null, mixer: null,
@@ -28,6 +29,7 @@ const state = {
   startPos: null,      // リスポーン地点 (再生開始時のプレイヤー位置)
   collected: 0, collectTotal: 0,
   ride: null,          // 乗っている動く床 { obj, local } (床と一緒に動く)
+  cleared: false,      // ゴール到達 (以降は操作を受け付けない)
 };
 
 /* --- トリガー通過などのお知らせ表示 --- */
@@ -42,6 +44,25 @@ function showToast(msg) {
   toast.style.display = "block";
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => { toast.style.display = "none"; }, 2000);
+}
+
+/* --- クリア演出 (画面中央の大きなバナー) --- */
+const clearBanner = document.createElement("div");
+clearBanner.style.cssText = "position:absolute;inset:0;display:none;z-index:6;" +
+  "align-items:center;justify-content:center;flex-direction:column;gap:10px;" +
+  "pointer-events:none;background:radial-gradient(circle,rgba(255,209,102,.12),transparent 60%);";
+clearBanner.innerHTML =
+  `<div style="font-size:44px;font-weight:700;color:#ffd166;text-shadow:0 2px 18px rgba(255,209,102,.6);letter-spacing:2px">STAGE CLEAR!</div>` +
+  `<div id="clear-sub" style="font-size:15px;color:#e8eaee"></div>` +
+  `<div style="font-size:12px;color:#9aa3ad;margin-top:6px">Esc か ■ で編集に戻る</div>`;
+document.getElementById("canvas-wrap").appendChild(clearBanner);
+function showClear() {
+  if (state.cleared) return;
+  state.cleared = true;
+  clearBanner.querySelector("#clear-sub").textContent =
+    state.collectTotal > 0 ? `💎 ${state.collected} / ${state.collectTotal}` : "";
+  clearBanner.style.display = "flex";
+  toast.style.display = "none";
 }
 
 // カメラ更新用のテンポラリ (毎フレームのnew回避)
@@ -70,6 +91,7 @@ function collides(x, y, z) {
   const minZ = z - state.colR, maxZ = z + state.colR;
   const bottom = y + STEP, top = y + state.colH;   // 低い段差は足元扱いで無視
   for (const e of state.obstacles) {
+    if (e.walkable) continue;   // 「床のみ」は横方向には当たらない (階段/スロープ)
     const b = e.box;
     if (maxX <= b.min.x || minX >= b.max.x) continue;
     if (maxZ <= b.min.z || minZ >= b.max.z) continue;
@@ -85,18 +107,19 @@ const _rayOrigin = new THREE.Vector3();
 const _rayDown = new THREE.Vector3(0, -1, 0);
 const _raycaster = new THREE.Raycaster();
 function supportAt(x, z, y) {
-  _rayOrigin.set(x, y + STEP, z);
+  _rayOrigin.set(x, y + STEP_WALK, z);   // 一番高い許容段差から真下を見る
   let best = -Infinity, bestMesh = null;
   for (const e of state.obstacles) {
     const b = e.box;
     if (x <= b.min.x || x >= b.max.x) continue;   // 中心点で候補を絞る
     if (z <= b.min.z || z >= b.max.z) continue;
-    if (b.min.y > y + STEP) continue;
+    const step = e.walkable ? STEP_WALK : STEP;   // 「床のみ」は段差を大きめに許容
+    if (b.min.y > y + step) continue;
     _raycaster.set(_rayOrigin, _rayDown);
     const hits = _raycaster.intersectObject(e.mesh, false);
     if (hits.length) {
       const hy = _rayOrigin.y - hits[0].distance;
-      if (hy > best) { best = hy; bestMesh = e.mesh; }
+      if (hy <= y + step && hy > best) { best = hy; bestMesh = e.mesh; }
     }
   }
   return { y: best, mesh: bestMesh };
@@ -146,15 +169,16 @@ export function startPlay() {
       // トリガー: 当たり判定なし・再生中非表示・通過を検知
       const b = new THREE.Box3().setFromObject(o);
       if (!b.isEmpty()) state.triggers.push({ box: b, name: o.name, inside: false });
-    } else if (hasTouchableComponent(o)) {
-      // Collectible / Trap は当たり判定なし (すり抜けて接触判定だけする)
+    } else if (hasTouchableComponent(o) || o.userData.collider === "none") {
+      // Collectible / Trap / コライダー「なし」は当たり判定を作らない (すり抜け)
     } else {
       const dynamic = hasMovementComponent(o);   // Rotator/Mover持ちはAABBを毎フレーム更新
+      const walkable = o.userData.collider === "walkable";   // 床のみ (階段/スロープ)
       o.traverse(m => {
         if (m.isMesh) {
           const b = new THREE.Box3().setFromObject(m);
           if (!b.isEmpty()) {
-            const entry = { mesh: m, box: b };
+            const entry = { mesh: m, box: b, walkable };
             state.obstacles.push(entry);
             if (dynamic) state.dynamicObs.push(entry);
           }
@@ -173,6 +197,8 @@ export function startPlay() {
   state.compSnapshots = compObjs.map(o => snapshotPose(o));
   state.collected = 0;
   state.collectTotal = compCollectibleCount();
+  state.cleared = false;
+  clearBanner.style.display = "none";
 
   const clips = player.userData.clips || [];
   if (clips.length) {
@@ -219,6 +245,8 @@ export function stopPlay() {
   state.compSnapshots = [];
   state.dynamicObs = [];
   state.ride = null;
+  state.cleared = false;
+  clearBanner.style.display = "none";
   for (const o of state.hidden) o.visible = true;
   state.hidden = [];
   state.extras = [];
@@ -259,10 +287,12 @@ export function updatePlay(dt) {
   }
 
   let dx = 0, dz = 0;
-  if (k["w"] || k["arrowup"])    dz -= 1;
-  if (k["s"] || k["arrowdown"])  dz += 1;
-  if (k["a"] || k["arrowleft"])  dx -= 1;
-  if (k["d"] || k["arrowright"]) dx += 1;
+  if (!state.cleared) {   // クリア後は操作を受け付けない
+    if (k["w"] || k["arrowup"])    dz -= 1;
+    if (k["s"] || k["arrowdown"])  dz += 1;
+    if (k["a"] || k["arrowleft"])  dx -= 1;
+    if (k["d"] || k["arrowright"]) dx += 1;
+  }
   const moving = dx !== 0 || dz !== 0;
 
   const footY = () => p.position.y - state.footOff;   // 足元の高さ (原点が中心の形状にも対応)
@@ -316,15 +346,18 @@ export function updatePlay(dt) {
   compUpdate(dt, {
     px: p.position.x, py: footY(), pz: p.position.z,
     colR: state.colR, colH: state.colH,
-    respawn,
+    respawn: msg => { if (!state.cleared) respawn(msg); },   // クリア後はリスポーンしない
     collect: () => {
       state.collected++;
       showToast(`💎 ${state.collected} / ${state.collectTotal}`);
     },
+    remaining: () => state.collectTotal - state.collected,
+    notify: showToast,
+    clear: showClear,
   });
 
   // 奈落 (KillZ): スタート地点よりだいぶ下に落ちたらリスポーン
-  if (footY() < state.groundY - 12) respawn("💀 落下! スタートに戻る");
+  if (!state.cleared && footY() < state.groundY - 12) respawn("💀 落下! スタートに戻る");
 
   // トリガー通過の検知 (入った瞬間に一度だけ通知、出たらリセット)
   for (const t of state.triggers) {

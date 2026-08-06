@@ -8,7 +8,7 @@ import { addPrimitive, makeTexture } from "./primitives.js";
 import { updateGizmoFrame } from "./gizmo.js";
 import { updateOverlay } from "./ui.js";
 import { pushAdd, pushCommand, pushDelete } from "./history.js";
-import { importGLBFromBase64, importAssetGLB } from "./io.js";
+import { importGLBFromBase64, importAssetGLB, applyTint } from "./io.js";
 import { updatePlay } from "./play.js";
 import "./inspector.js";
 import "./controls.js";
@@ -78,10 +78,11 @@ async function duplicateSelected() {
       texKind: src.userData.texKind,
     });
   }
-  // コンポーネント設定も複製する
+  // コンポーネント設定とティントも複製する
   if (src.userData.components?.length) {
     copy.userData.components = JSON.parse(JSON.stringify(src.userData.components));
   }
+  if (src.userData.tint && src.userData.tint !== "#ffffff") applyTint(copy, src.userData.tint);
   copy.position.x += 0.4;   // 重ならないよう少しずらす
   copy.position.z += 0.4;
   select(copy);

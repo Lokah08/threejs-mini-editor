@@ -71,6 +71,64 @@ export const COMPONENT_TYPES = {
     },
   },
 
+  Goal: {
+    label: "Goal (触れるとクリア)",
+    touchable: true,
+    params: {
+      requireAll: { type: "checkbox", default: false, label: "アイテム全収集が条件" },
+      spin:       { type: "checkbox", default: true,  label: "回転演出" },
+    },
+    update(inst, dt) {
+      if (inst.params.spin) inst.obj.rotation.y += 1.5 * dt;
+    },
+    onTouch(inst, ctx) {
+      if (inst.state.done) return;
+      if (inst.params.requireAll && ctx.remaining() > 0) {
+        ctx.notify(`🔒 まだ取っていないアイテムが ${ctx.remaining()} 個あります`);
+        return;
+      }
+      inst.state.done = true;
+      inst.obj.visible = false;   // 取ったゴール品は消える (停止時に復元)
+      ctx.clear();
+    },
+  },
+
+  Chaser: {
+    label: "Chaser (追いかけてくる敵)",
+    touchable: true,   // 捕まったらリスポーン。壁や床はすり抜ける (幽霊タイプ)
+    params: {
+      speed: { type: "number", default: 1.8, label: "速度" },
+      range: { type: "number", default: 6, label: "索敵範囲" },
+      back:  { type: "checkbox", default: true, label: "見失ったら持ち場に戻る" },
+    },
+    start(inst) {
+      inst.state.home = inst.obj.position.clone();   // 持ち場を覚えておく
+    },
+    update(inst, dt, ctx) {
+      const o = inst.obj, p = inst.params;
+      const dx = ctx.px - o.position.x, dz = ctx.pz - o.position.z;
+      const dist = Math.hypot(dx, dz);
+      if (dist < p.range && dist > 0.05) {
+        // プレイヤーを発見 → 追いかける
+        o.position.x += (dx / dist) * p.speed * dt;
+        o.position.z += (dz / dist) * p.speed * dt;
+        o.rotation.y = Math.atan2(dx, dz);
+      } else if (p.back && inst.state.home) {
+        // 見失った → 持ち場へ帰る
+        const hx = inst.state.home.x - o.position.x, hz = inst.state.home.z - o.position.z;
+        const hd = Math.hypot(hx, hz);
+        if (hd > 0.05) {
+          o.position.x += (hx / hd) * p.speed * dt;
+          o.position.z += (hz / hd) * p.speed * dt;
+          o.rotation.y = Math.atan2(hx, hz);
+        }
+      }
+    },
+    onTouch(inst, ctx) {
+      ctx.respawn("👻 捕まった! スタートに戻る");
+    },
+  },
+
 };
 
 /* ============================================================

@@ -147,6 +147,13 @@
         </div>
         <div class="isection" id="playset-section">
           <h3>Play Settings</h3>
+          <div class="irow"><label style="width:auto;font-family:inherit">当たり判定</label>
+            <select id="obj-collider">
+              <option value="solid">実体 (ぶつかる)</option>
+              <option value="walkable">床のみ (階段/坂)</option>
+              <option value="none">なし (すり抜け)</option>
+            </select>
+          </div>
           <div class="irow"><label style="width:auto;font-family:inherit">再生中は非表示 (コライダー)</label><input type="checkbox" id="obj-hideplay" style="flex:0 0 auto;margin-left:auto"></div>
           <div class="irow" style="margin-bottom:0"><label style="width:auto;font-family:inherit">トリガー (通過を検知)</label><input type="checkbox" id="obj-trigger" style="flex:0 0 auto;margin-left:auto"></div>
         </div>

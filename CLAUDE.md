@@ -91,10 +91,20 @@ ES Modulesのためファイル直開き (file://) では動かない。
   トースト表示 (`🚩 {name} を通過!`)。出て再度入ると再通知。ゴール/チェックポイント用。
   どちらもInspectorのPlay Settingsセクションで設定、scene.json は version 6
 - 編集QoL: F = 選択オブジェクトへ視点フォーカス、Delete = 選択オブジェクトを削除 (Undo可)
-- コンポーネント4種: Rotator (回転)、Mover (往復移動)、Collectible (取ると消えて
-  💎カウント表示)、Trap (触れるとリスポーン)。Rotator/Mover持ちのAABBは毎フレーム追従。
-  奈落 (KillZ): スタートより12下に落ちるとリスポーン。scene.json は version 7
-  (assetPath / components を追加)
+- コンポーネント6種: Rotator (回転)、Mover (往復移動)、Collectible (取ると消えて
+  💎カウント表示)、Trap (触れるとリスポーン)、Chaser (索敵範囲内のプレイヤーを追跡、
+  接触でリスポーン、見失うと持ち場へ帰る。壁すり抜けの幽霊タイプ)、
+  Goal (触れるとSTAGE CLEARバナー。`requireAll` でアイテム全収集を条件にできる。
+  クリア後は `state.cleared` で操作・リスポーンを停止)。Rotator/Mover持ちのAABBは毎フレーム追従。
+  奈落 (KillZ): スタートより12下に落ちるとリスポーン
+- 当たり判定の種類 (`userData.collider`, InspectorのPlay Settingsで設定):
+  "solid" 実体 (既定・AABBでぶつかる) / "walkable" 床のみ (横は当たらず上に乗れる。
+  段差許容が STEP_WALK=0.7 に広がる。階段・スロープ用) / "none" すり抜け (ゲート・装飾用)。
+  AABBは形を箱で包むため、階段は斜めの壁、アーチは塞がった門になってしまう。それを
+  オブジェクト単位で回避するための設定
+- GLBのティント (`userData.tint`, InspectorのColorで設定): 全メッシュの元色
+  (`material.userData.origColor` に保持) に指定色を掛ける。#ffffff で元通り。
+  scene.json は version 9 (v7: assetPath/components, v8: tint, v9: collider)
 
 ## 今後の候補 (未実装)
 
