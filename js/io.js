@@ -2,7 +2,8 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { GLTFExporter } from "three/addons/exporters/GLTFExporter.js";
-import { scene, objects, camGizmo, gameCam, select, removeObject, notifySceneChanged } from "./state.js";
+import { scene, objects, camGizmo, gameCam, ambientLight, sunLight, select, removeObject, notifySceneChanged } from "./state.js";
+import { addLight, resetLightCounter } from "./lights.js";
 import { addPrimitive, resetCounter } from "./primitives.js";
 import { updateOverlay } from "./ui.js";
 import { pushAdd, clearHistory } from "./history.js";
@@ -13,7 +14,8 @@ import { stopPlay } from "./play.js";
 ============================================================ */
 export function sceneToJSON() {
   return JSON.stringify({
-    meta: { app: "MiniEditor", version: 9 },   // v8: tint, v9: collider
+    meta: { app: "MiniEditor", version: 10 },   // v9: collider, v10: ライト / 環境光
+    env: { ambient: ambientLight.intensity, sun: sunLight.intensity },
     camera: {
       name: camGizmo.name,
       position: camGizmo.position.toArray(),
@@ -37,7 +39,13 @@ export function sceneToJSON() {
       if (o.userData.components?.length) base.components = o.userData.components;   // v7
       if (o.userData.tint && o.userData.tint !== "#ffffff") base.tint = o.userData.tint;   // v8
       if (o.userData.collider && o.userData.collider !== "solid") base.collider = o.userData.collider;   // v9
-      if (o.userData.assetPath) {
+      if (o.userData.kind === "light") {        // v10: ライト
+        base.lightType = o.userData.lightType;
+        base.lightColor = o.userData.lightColor;
+        base.intensity = o.userData.intensity;
+        base.distance = o.userData.distance;
+        base.angle = o.userData.angle;
+      } else if (o.userData.assetPath) {
         base.assetPath = o.userData.assetPath;   // v7: アセットはパス参照 (軽量)
       } else if (o.userData.kind === "glb") {
         base.glbBase64 = o.userData.glbBase64;   // 元のGLBを丸ごと埋め込む (クリップ含む)
@@ -59,10 +67,21 @@ export async function loadJSON(text) {
   for (const o of [...objects]) removeObject(o);
   select(null);
   resetCounter();
+  resetLightCounter();
+  if (data.env) {                                        // v10: 環境光
+    ambientLight.intensity = data.env.ambient ?? 0.9;
+    sunLight.intensity = data.env.sun ?? 1.2;
+  }
 
   for (const d of (data.objects || [])) {
     let obj;
-    if (d.assetPath) {                                   // v7: パス参照アセット
+    if (d.kind === "light") {                            // v10: ライト
+      obj = addLight(d.lightType || "point", {
+        name: d.name, position: d.position, rotation: d.rotation,
+        color: d.lightColor, intensity: d.intensity,
+        distance: d.distance, angle: d.angle,
+      });
+    } else if (d.assetPath) {                            // v7: パス参照アセット
       obj = await importAssetGLB(d.assetPath, d.name);
       obj.position.fromArray(d.position);
       obj.rotation.fromArray([...d.rotation, "XYZ"]);

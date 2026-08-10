@@ -5,7 +5,7 @@ import { updateOverlay } from "./ui.js";
 const list = document.getElementById("hier-list");
 
 const ICONS = {
-  box: "◼", sphere: "●", cylinder: "▮", torus: "◯", plane: "▬", glb: "📦",
+  box: "◼", sphere: "●", cylinder: "▮", torus: "◯", plane: "▬", glb: "📦", light: "💡",
 };
 
 export function renderHierarchy() {

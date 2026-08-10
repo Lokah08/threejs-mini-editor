@@ -49,7 +49,8 @@ export const COMPONENT_TYPES = {
     label: "Collectible (取れるアイテム)",
     touchable: true,
     params: {
-      spin: { type: "checkbox", default: true, label: "回転演出" },
+      spin:  { type: "checkbox", default: true, label: "回転演出" },
+      sound: { type: "select", options: ["coin", "heart", "key", "none"], default: "coin", label: "効果音" },
     },
     update(inst, dt) {
       if (inst.params.spin) inst.obj.rotation.y += 2.5 * dt;
@@ -58,6 +59,7 @@ export const COMPONENT_TYPES = {
       if (inst.state.taken) return;
       inst.state.taken = true;
       inst.obj.visible = false;   // 停止時に復元される (visibleは再生系が戻す)
+      ctx.sound(inst.params.sound);
       ctx.collect();              // カウント + トースト表示
     },
   },
@@ -65,8 +67,11 @@ export const COMPONENT_TYPES = {
   Trap: {
     label: "Trap (触れるとリスポーン)",
     touchable: true,
-    params: {},
+    params: {
+      sound: { type: "select", options: ["trap", "falling", "none"], default: "trap", label: "効果音" },
+    },
     onTouch(inst, ctx) {
+      ctx.sound(inst.params.sound);
       ctx.respawn("💀 トラップ! スタートに戻る");
     },
   },
@@ -77,6 +82,7 @@ export const COMPONENT_TYPES = {
     params: {
       requireAll: { type: "checkbox", default: false, label: "アイテム全収集が条件" },
       spin:       { type: "checkbox", default: true,  label: "回転演出" },
+      sound:      { type: "select", options: ["key", "coin", "heart", "none"], default: "key", label: "クリア音" },
     },
     update(inst, dt) {
       if (inst.params.spin) inst.obj.rotation.y += 1.5 * dt;
@@ -89,6 +95,7 @@ export const COMPONENT_TYPES = {
       }
       inst.state.done = true;
       inst.obj.visible = false;   // 取ったゴール品は消える (停止時に復元)
+      ctx.sound(inst.params.sound);
       ctx.clear();
     },
   },
@@ -125,6 +132,7 @@ export const COMPONENT_TYPES = {
       }
     },
     onTouch(inst, ctx) {
+      ctx.sound("trap");
       ctx.respawn("👻 捕まった! スタートに戻る");
     },
   },

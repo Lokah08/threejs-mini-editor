@@ -40,6 +40,18 @@ ES Modulesのためファイル直開き (file://) では動かない。
   除外され、プレイヤー接触で `onTouch` が呼ばれる。実行系は再生モード中のみ動作し、
   ポーズは play.js が復元、Collectible等の非表示化は compPlayStop が復元する。
   新しい振る舞いは COMPONENT_TYPES への追加だけで完結する。
+- ライトは `js/lights.js`。Group (実ライト + 電球ギズモ + spot/directional用のtarget) を
+  objects に入れるので、選択・移動・複製・保存・コンポーネント付与がそのまま効く。
+  `userData.kind === "light"`、種類は `lightType` (point/spot/directional)。
+  設定値は userData (lightColor/intensity/distance/angle) に持ち、`applyLightSettings()`
+  で実ライトへ反映する。spot/directional は「グループの真下」を照らす (回転で向きを変える)。
+  当たり判定からは除外、電球ギズモ (`userData.editorOnly`) は再生中に隠れる。
+  シーン全体のベース照明は state.js の `ambientLight` / `sunLight` で、
+  Main Camera の Inspector から強さを調整する (暗くするとライトが映える)。
+- サウンドは `js/audio.js`。ブラウザの自動再生制限のため、▶ボタンのクリックを起点に
+  AudioContext を作る。BGMは再生モード中ループ、効果音は `playSE(key)`。
+  コンポーネントからは `ctx.sound(名前)` で鳴らす (Collectible/Trap/Goal は
+  パラメータで音を選べる)。音源が無い環境ではエラーを出さず無音になる。
 - アセットパック (`assets/` フォルダ、gitignore対象) は `assets/index.json` の目録で
   Assetsパネルに一覧表示 (js/assets.js)。読み込みは `importAssetGLB(path)` で、
   scene.json には `assetPath` 参照で保存される (Base64埋め込みなしで軽量)。
@@ -104,10 +116,29 @@ ES Modulesのためファイル直開き (file://) では動かない。
   オブジェクト単位で回避するための設定
 - GLBのティント (`userData.tint`, InspectorのColorで設定): 全メッシュの元色
   (`material.userData.origColor` に保持) に指定色を掛ける。#ffffff で元通り。
-  scene.json は version 9 (v7: assetPath/components, v8: tint, v9: collider)
+  scene.json は version 10 (v7: assetPath/components, v8: tint, v9: collider,
+  v10: ライト (lightType/lightColor/intensity/distance/angle) と env (環境光の強さ))
+- 音源ファイル (`assets/audio/`, gitignore対象):
+  BGM.wav (BGM) / Coins.wav (コイン) / heart.wav (ハート) / key.wav (鍵・クリア) /
+  trap.wav (トラップ・敵) / falling.wav (落下)。追加するときは audio.js の SE_FILES と
+  components.js の sound パラメータの options に足す
 
-## 今後の候補 (未実装)
+## 今後の予定 (優先順)
 
-- Hierarchyの親子関係・グループ化 (scene.json version 7 が必要)
-- ライトをオブジェクトとして配置・編集
-- 再生モードの拡張 (テクスチャアニメーション、動く障害物への当たり判定追従)
+作業の分担についての方針:
+- **エディタ自体を作る** (新機能・設計変更、ファイル横断の改修) → Claude Code でやる
+- **エディタで作品を作る** (コンポーネントを1個増やす等) → エディタ内AIチャットでやる
+  この分担のため、エディタ内チャットは簡素な作りでよい
+  (components.js に部品を追記して即使える、程度で十分価値がある)
+
+1. ~~ライティング~~ / ~~サウンド (BGM・効果音)~~ → 実装済み
+   残り: 背景のスカイボックス化 (アセットパックの `Textures/Skybox_1.png` が使える)、
+   位置つき音 (PositionalAudio、篝火のパチパチ等。音源が見つかったら)
+2. **エディタ内AIチャット** — 上記の分担に基づく簡素なもの。
+   「〇〇するコンポーネントを作って」→ COMPONENT_TYPES に追加できる形で生成 → その場で使える
+
+## その他の候補 (未実装)
+
+- Hierarchyの親子関係・グループ化 (scene.json のバージョン更新が必要)
+- コンポーネント追加案: スイッチで開くドア、消える床、ジャンプ台、タイマー制限
+- 再生モードの拡張 (テクスチャアニメーション)

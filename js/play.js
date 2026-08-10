@@ -7,6 +7,7 @@ import {
   compPlayStart, compUpdate, compPlayStop,
   hasMovementComponent, hasTouchableComponent, compCollectibleCount,
 } from "./components.js";
+import { audioPlayStart, audioPlayStop, playSE } from "./audio.js";
 
 const btn = document.getElementById("btn-play");
 const SPEED_DEFAULT = 2.5;
@@ -169,7 +170,7 @@ export function startPlay() {
       // トリガー: 当たり判定なし・再生中非表示・通過を検知
       const b = new THREE.Box3().setFromObject(o);
       if (!b.isEmpty()) state.triggers.push({ box: b, name: o.name, inside: false });
-    } else if (hasTouchableComponent(o) || o.userData.collider === "none") {
+    } else if (o.userData.kind === "light" || hasTouchableComponent(o) || o.userData.collider === "none") {
       // Collectible / Trap / コライダー「なし」は当たり判定を作らない (すり抜け)
     } else {
       const dynamic = hasMovementComponent(o);   // Rotator/Mover持ちはAABBを毎フレーム更新
@@ -189,6 +190,13 @@ export function startPlay() {
       o.visible = false;   // 見えない壁 / トリガーは再生中は姿を消す
       state.hidden.push(o);
     }
+    // 編集用の目印 (ライトの電球など) は再生中は隠す
+    o.traverse(m => {
+      if (m.userData.editorOnly && m.visible) {
+        m.visible = false;
+        state.hidden.push(m);
+      }
+    });
   }
 
   // コンポーネント起動 + 対象オブジェクトのポーズ保存 + リスポーン地点
@@ -229,10 +237,12 @@ export function startPlay() {
   btn.textContent = "■ 停止";
   btn.classList.add("playing");
   setViewMode("game");
+  audioPlayStart();   // BGM開始 (▶クリック起点なので自動再生制限に引っかからない)
 }
 
 export function stopPlay() {
   if (!app.playing) return;
+  audioPlayStop();
   if (state.mixer) state.mixer.stopAllAction();
   if (state.snapshot) restorePose(state.snapshot);
   if (state.camSnapshot) restorePose(state.camSnapshot);
@@ -354,10 +364,14 @@ export function updatePlay(dt) {
     remaining: () => state.collectTotal - state.collected,
     notify: showToast,
     clear: showClear,
+    sound: playSE,
   });
 
   // 奈落 (KillZ): スタート地点よりだいぶ下に落ちたらリスポーン
-  if (!state.cleared && footY() < state.groundY - 12) respawn("💀 落下! スタートに戻る");
+  if (!state.cleared && footY() < state.groundY - 12) {
+    playSE("falling");
+    respawn("💀 落下! スタートに戻る");
+  }
 
   // トリガー通過の検知 (入った瞬間に一度だけ通知、出たらリセット)
   for (const t of state.triggers) {

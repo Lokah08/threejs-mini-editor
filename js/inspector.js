@@ -1,6 +1,7 @@
 // inspector.js — Inspector パネルの表示と入力バインド
 import * as THREE from "three";
-import { app, camGizmo, gameCam, selBox, objects, onSelect, notifySceneChanged } from "./state.js";
+import { app, camGizmo, gameCam, selBox, objects, ambientLight, sunLight, onSelect, notifySceneChanged } from "./state.js";
+import { applyLightSettings, isLight } from "./lights.js";
 import { pushCommand, pushDelete, snapshotTransform, pushTransform } from "./history.js";
 import { COMPONENT_TYPES } from "./components.js";
 import { applyTint } from "./io.js";
@@ -23,6 +24,15 @@ const playsetSection = document.getElementById("playset-section");
 const hidePlayCheck  = document.getElementById("obj-hideplay");
 const triggerCheck   = document.getElementById("obj-trigger");
 const colliderSelect = document.getElementById("obj-collider");
+const lightSection   = document.getElementById("light-section");
+const lightColor     = document.getElementById("light-color");
+const lightIntensity = document.getElementById("light-intensity");
+const lightDistance  = document.getElementById("light-distance");
+const lightAngle     = document.getElementById("light-angle");
+const lightDistRow   = document.getElementById("light-dist-row");
+const lightAngleRow  = document.getElementById("light-angle-row");
+const envAmbient     = document.getElementById("env-ambient");
+const envSun         = document.getElementById("env-sun");
 const compSection    = document.getElementById("comp-section");
 const compList       = document.getElementById("comp-list");
 const compAddSelect  = document.getElementById("comp-add-select");
@@ -45,14 +55,22 @@ onSelect(obj => {
   inspEmpty.style.display = "none";
   inspContent.style.display = "";
   const isCam = obj === camGizmo;
-  const isGlb = obj.userData.kind === "glb";
-  matSection.style.display    = isCam ? "none" : "";   // GLBはティント(色掛け)として使う
-  scaleSection.style.display  = isCam ? "none" : "";
+  const light = isLight(obj);
+  matSection.style.display    = (isCam || light) ? "none" : "";   // GLBはティント(色掛け)
+  scaleSection.style.display  = (isCam || light) ? "none" : "";
   camSection.style.display    = isCam ? "" : "none";
-  playerSection.style.display  = isCam ? "none" : "";
-  playsetSection.style.display = isCam ? "none" : "";
-  compSection.style.display    = isCam ? "none" : "";
+  lightSection.style.display  = light ? "" : "none";
+  playerSection.style.display  = (isCam || light) ? "none" : "";
+  playsetSection.style.display = (isCam || light) ? "none" : "";
+  compSection.style.display    = isCam ? "none" : "";   // ライトも回せる (Rotator等)
+  if (light) {
+    // Pointは広がり不要、Directionalは距離も広がりも不要
+    const t = obj.userData.lightType;
+    lightDistRow.style.display  = t === "directional" ? "none" : "";
+    lightAngleRow.style.display = t === "spot" ? "" : "none";
+  }
   typeLabel.textContent = isCam ? "Camera (Game View の視点)"
+                        : light ? `Light: ${obj.userData.lightType}`
                         : KIND_LABELS[obj.userData.kind] ?? `Mesh: ${obj.userData.kind}`;
   refreshInspector();
 });
@@ -70,6 +88,14 @@ export function refreshInspector() {
   if (sel === camGizmo) {
     fovInput.value = gameCam.fov;
     camPlaySelect.value = camGizmo.userData.playMode || "fixed";
+    envAmbient.value = ambientLight.intensity;
+    envSun.value = sunLight.intensity;
+  }
+  else if (isLight(sel)) {
+    lightColor.value = sel.userData.lightColor;
+    lightIntensity.value = sel.userData.intensity;
+    lightDistance.value = sel.userData.distance;
+    lightAngle.value = sel.userData.angle;
   }
   else if (sel.userData.kind === "glb") colorInput.value = sel.userData.tint || "#ffffff";
   else if (sel.material) colorInput.value = "#" + sel.material.color.getHexString();
@@ -202,6 +228,65 @@ function bindFlagCheckbox(input, key) {
 }
 bindFlagCheckbox(hidePlayCheck, "hideInPlay");
 bindFlagCheckbox(triggerCheck, "isTrigger");
+
+/* --- ライトの設定 (色・強さ・距離・広がり) --- */
+function bindLightInput(input, key, isColor = false) {
+  let pend = null;
+  input.addEventListener("focus", () => {
+    if (isLight(app.selected)) pend = { obj: app.selected, before: app.selected.userData[key] };
+  });
+  input.addEventListener("input", () => {
+    const sel = app.selected;
+    if (!isLight(sel)) return;
+    if (isColor) {
+      if (!pend || pend.obj !== sel) pend = { obj: sel, before: sel.userData[key] };
+      sel.userData[key] = input.value;
+    } else {
+      const v = parseFloat(input.value);
+      if (isNaN(v)) return;
+      sel.userData[key] = v;
+    }
+    applyLightSettings(sel);
+  });
+  input.addEventListener("change", () => {
+    if (pend && pend.obj === app.selected) {
+      const { obj, before } = pend;
+      const after = obj.userData[key];
+      if (before !== after) pushCommand({
+        undo: () => { obj.userData[key] = before; applyLightSettings(obj); syncAfterEdit(obj); },
+        redo: () => { obj.userData[key] = after;  applyLightSettings(obj); syncAfterEdit(obj); },
+      });
+    }
+    pend = null;
+  });
+}
+bindLightInput(lightColor, "lightColor", true);
+bindLightInput(lightIntensity, "intensity");
+bindLightInput(lightDistance, "distance");
+bindLightInput(lightAngle, "angle");
+
+/* --- 環境光 (シーン全体のベース照明) --- */
+function bindEnvInput(input, light) {
+  let before = null;
+  input.addEventListener("focus", () => { before = light.intensity; });
+  input.addEventListener("input", () => {
+    const v = parseFloat(input.value);
+    if (!isNaN(v) && v >= 0) light.intensity = v;
+  });
+  input.addEventListener("change", () => {
+    const after = light.intensity;
+    if (before !== null && before !== after) {
+      const b = before;
+      pushCommand({
+        undo: () => { light.intensity = b;     syncAfterEdit(camGizmo); },
+        redo: () => { light.intensity = after; syncAfterEdit(camGizmo); },
+      });
+    }
+    before = null;
+  });
+}
+bindEnvInput(envAmbient, ambientLight);
+bindEnvInput(envSun, sunLight);
 
 /* --- 当たり判定の種類 (実体 / 床のみ / なし) --- */
 colliderSelect.addEventListener("change", () => {

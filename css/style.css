@@ -106,6 +106,8 @@ body{
 .tool:hover{color:var(--text)}
 .tool.active{color:#e8eaee;border-color:var(--accent);background:#2b3947}
 .tool.disabled{opacity:.35;pointer-events:none}
+.voljack{display:flex;align-items:center;gap:4px;margin-right:10px;color:var(--dim);font-size:11px}
+.voljack input[type=range]{width:70px;accent-color:var(--accent);cursor:pointer}
 .tool.play{color:#8bd450;border-color:#39512f;margin-right:8px}
 .tool.play:hover{color:#a5e86a}
 .tool.play.playing{color:#ff8a7a;border-color:#5a3030;background:#3a2626}

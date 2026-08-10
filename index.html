@@ -39,6 +39,14 @@
           <div class="asset" id="glb-import"><span class="ico">📥</span>GLBを開く…<small>.glb</small></div>
         </div>
       </div>
+      <div class="folder open">
+        <div class="fname">📁 lights/</div>
+        <div class="items">
+          <div class="asset" data-light="point"><span class="ico">💡</span>Point<small>光源</small></div>
+          <div class="asset" data-light="spot"><span class="ico">🔦</span>Spot<small>光源</small></div>
+          <div class="asset" data-light="directional"><span class="ico">☀️</span>Directional<small>光源</small></div>
+        </div>
+      </div>
       <div class="folder">
         <div class="fname">📁 assets/ (パック)</div>
         <div class="items" id="asset-glb-list"></div>
@@ -76,6 +84,7 @@
       <div class="vtab active" data-view="scene"><span class="dot"></span>Scene View</div>
       <div class="vtab" data-view="game"><span class="dot"></span>Game View</div>
       <div id="tools">
+        <label class="voljack" title="音量"><span>🔊</span><input type="range" id="vol-master" min="0" max="1" step="0.05" value="0.8"></label>
         <button class="tool play" id="btn-play" title="再生モード: プレイヤーをWASDで操作">▶ 再生</button>
         <button class="tool active" data-tool="translate" title="ショートカット: W">⇄ 移動 (W)</button>
         <button class="tool" data-tool="rotate" title="ショートカット: E">⟳ 回転 (E)</button>
@@ -123,6 +132,8 @@
         <div class="isection" id="cam-section" style="display:none">
           <h3>Camera</h3>
           <div class="irow"><label style="width:auto;font-family:inherit">FOV</label><input type="number" step="1" min="10" max="120" id="cam-fov"></div>
+          <div class="irow"><label style="width:auto;font-family:inherit">環境光</label><input type="number" step="0.05" min="0" id="env-ambient"></div>
+          <div class="irow"><label style="width:auto;font-family:inherit">全体照明</label><input type="number" step="0.1" min="0" id="env-sun"></div>
           <div class="irow" style="margin-bottom:0"><label style="width:auto;font-family:inherit">再生中</label>
             <select id="cam-play">
               <option value="fixed">固定</option>
@@ -136,6 +147,13 @@
           <div class="irow"><label style="width:auto;font-family:inherit">プレイヤーとして操作</label><input type="checkbox" id="obj-player" style="flex:0 0 auto;margin-left:auto"></div>
           <div class="irow"><label style="width:auto;font-family:inherit">移動速度</label><input type="number" step="0.1" min="0.1" id="obj-speed"></div>
           <div class="irow" style="margin-bottom:0"><label style="width:auto;font-family:inherit">自動再生</label><select id="obj-autoclip"></select></div>
+        </div>
+        <div class="isection" id="light-section" style="display:none">
+          <h3>Light</h3>
+          <div class="irow"><label style="width:auto;font-family:inherit">色</label><input type="color" id="light-color"></div>
+          <div class="irow"><label style="width:auto;font-family:inherit">強さ</label><input type="number" step="0.5" min="0" id="light-intensity"></div>
+          <div class="irow" id="light-dist-row"><label style="width:auto;font-family:inherit">届く距離</label><input type="number" step="0.5" min="0" id="light-distance"></div>
+          <div class="irow" id="light-angle-row" style="margin-bottom:0"><label style="width:auto;font-family:inherit">広がり (度)</label><input type="number" step="1" min="1" max="89" id="light-angle"></div>
         </div>
         <div class="isection" id="comp-section">
           <h3>Components</h3>

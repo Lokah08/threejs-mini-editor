@@ -10,11 +10,12 @@ wrap.appendChild(renderer.domElement);
 export const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x141518);
 
-/* ===== ライト ===== */
-scene.add(new THREE.HemisphereLight(0xffffff, 0x33383f, 0.9));
-const dir = new THREE.DirectionalLight(0xffffff, 1.2);
-dir.position.set(5, 8, 4);
-scene.add(dir);
+/* ===== 環境光 (シーン全体のベース照明。Inspectorで強さを調整できる) ===== */
+export const ambientLight = new THREE.HemisphereLight(0xffffff, 0x33383f, 0.9);
+scene.add(ambientLight);
+export const sunLight = new THREE.DirectionalLight(0xffffff, 1.2);
+sunLight.position.set(5, 8, 4);
+scene.add(sunLight);
 
 /* ===== エディタ専用ヘルパー (保存対象外) ===== */
 export const grid = new THREE.GridHelper(20, 20, 0x3a4048, 0x24282e);

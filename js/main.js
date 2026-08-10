@@ -10,6 +10,8 @@ import { updateOverlay } from "./ui.js";
 import { pushAdd, pushCommand, pushDelete } from "./history.js";
 import { importGLBFromBase64, importAssetGLB, applyTint } from "./io.js";
 import { updatePlay } from "./play.js";
+import { addLight } from "./lights.js";
+import { setVolume } from "./audio.js";
 import "./inspector.js";
 import "./controls.js";
 import "./hierarchy.js";
@@ -21,6 +23,21 @@ document.querySelectorAll("[data-add]").forEach(el => {
     if (app.playing) return;   // 再生中は編集不可
     const mesh = addPrimitive(el.dataset.add);
     pushAdd(mesh);
+    updateOverlay();
+  });
+});
+
+/* ===== 音量スライダー ===== */
+document.getElementById("vol-master").addEventListener("input", e => {
+  setVolume("master", parseFloat(e.target.value));
+});
+
+/* ===== Assets: ライト追加 ===== */
+document.querySelectorAll("[data-light]").forEach(el => {
+  el.addEventListener("click", () => {
+    if (app.playing) return;
+    const g = addLight(el.dataset.light);
+    pushAdd(g);
     updateOverlay();
   });
 });
@@ -56,7 +73,15 @@ async function duplicateSelected() {
   if (!src || src === camGizmo) return;
 
   let copy;
-  if (src.userData.assetPath) {
+  if (src.userData.kind === "light") {
+    copy = addLight(src.userData.lightType, {
+      name: src.name + " (copy)",
+      position: src.position.toArray(),
+      rotation: src.rotation.toArray().slice(0, 3),
+      color: src.userData.lightColor, intensity: src.userData.intensity,
+      distance: src.userData.distance, angle: src.userData.angle,
+    });
+  } else if (src.userData.assetPath) {
     // アセット参照はパスから再インポート (キャッシュ済みで速い)
     copy = await importAssetGLB(src.userData.assetPath, src.name + " (copy)");
     copy.position.copy(src.position);
