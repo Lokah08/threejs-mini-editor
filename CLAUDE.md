@@ -57,6 +57,28 @@ ES Modulesのためファイル直開き (file://) では動かない。
   scene.json には `assetPath` 参照で保存される (Base64埋め込みなしで軽量)。
   目録はフォルダにGLBを追加したら再生成する (files配列にファイル名を足すだけでもよい)。
 
+- エディタ内AIチャットは `js/chat.js`。ビューポート下のドロワー (💬 AI ボタン)。
+  Anthropic SDK (`@anthropic-ai/sdk`、importmap で esm.sh から動的 import) をブラウザから直接呼ぶ
+  (`dangerouslyAllowBrowser`)。APIキーは localStorage (`miniEditor.apiKey`) のみに保存し、
+  scene.json には含めない。モデルは `claude-opus-5`、サーバー側フォールバック
+  (`fallbacks: "default"`) を付けて呼び、未対応の 400 が返ったら外して再試行する。
+  Claude にはツール (define_component / attach_component / detach_component /
+  remove_component_type) を渡し、返ってきた tool_use をその場で実行して結果を返す手動ループ。
+  システムプロンプトにコンポーネントの契約 (定義の形、ctx API) と現在のシーン一覧を毎回入れる。
+- カスタムコンポーネントは components.js の `registerComponent(name, code)`。code は
+  「定義オブジェクトに評価される JS 式」で、`new Function("THREE", ...)` で評価・検証して
+  COMPONENT_TYPES に登録する (組み込みは上書き不可)。ソースは `CUSTOM_COMPONENTS` に保持し、
+  localStorage (`miniEditor.customComponents`) と scene.json の `customComponents` (v11) に保存。
+  scene.json 読込時は objects より先に登録する。登録簿の変化は `onComponentsChanged(fn)` で
+  購読 (Inspector の追加メニューを作り直す)。生成コードはページ内で実行されるので、
+  ローカルの単独利用が前提。
+
+- 背景 (スカイボックス) は `js/skybox.js`。等距円筒パノラマ画像を TextureLoader で読み
+  `EquirectangularReflectionMapping` + sRGB で `scene.background` に貼る (Scene/Game 両ビューに映る)。
+  候補は `assets/index.json` の `skyboxes` (パス配列)。現在値は `skyState.path` (null = 単色)、
+  Main Camera の Inspector「背景」で切り替え (Undo可)、scene.json は `env.skybox` (v12)。
+  `scene.environment` (反射・IBL) には使っていない。
+
 ## 規約
 
 - UI文言は日本語
@@ -116,8 +138,9 @@ ES Modulesのためファイル直開き (file://) では動かない。
   オブジェクト単位で回避するための設定
 - GLBのティント (`userData.tint`, InspectorのColorで設定): 全メッシュの元色
   (`material.userData.origColor` に保持) に指定色を掛ける。#ffffff で元通り。
-  scene.json は version 10 (v7: assetPath/components, v8: tint, v9: collider,
-  v10: ライト (lightType/lightColor/intensity/distance/angle) と env (環境光の強さ))
+  scene.json は version 11 (v7: assetPath/components, v8: tint, v9: collider,
+  v10: ライト (lightType/lightColor/intensity/distance/angle) と env (環境光の強さ),
+  v11: customComponents (チャットで作った部品のソース), v12: env.skybox)
 - 音源ファイル (`assets/audio/`, gitignore対象):
   BGM.wav (BGM) / Coins.wav (コイン) / heart.wav (ハート) / key.wav (鍵・クリア) /
   trap.wav (トラップ・敵) / falling.wav (落下)。追加するときは audio.js の SE_FILES と
@@ -132,10 +155,11 @@ ES Modulesのためファイル直開き (file://) では動かない。
   (components.js に部品を追記して即使える、程度で十分価値がある)
 
 1. ~~ライティング~~ / ~~サウンド (BGM・効果音)~~ → 実装済み
-   残り: 背景のスカイボックス化 (アセットパックの `Textures/Skybox_1.png` が使える)、
-   位置つき音 (PositionalAudio、篝火のパチパチ等。音源が見つかったら)
-2. **エディタ内AIチャット** — 上記の分担に基づく簡素なもの。
-   「〇〇するコンポーネントを作って」→ COMPONENT_TYPES に追加できる形で生成 → その場で使える
+   ~~背景のスカイボックス化~~ → 実装済み (js/skybox.js)。
+   残り: 位置つき音 (PositionalAudio、篝火のパチパチ等。音源が見つかったら)、
+   スカイボックスを scene.environment にも使う (反射) オプション、任意画像のD&D対応
+2. ~~エディタ内AIチャット~~ → 実装済み (js/chat.js)。
+   候補: 生成した部品を components.js に書き戻すエクスポート、シーン操作ツールの追加 (配置・移動)
 
 ## その他の候補 (未実装)
 

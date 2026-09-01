@@ -8,14 +8,17 @@ import { addPrimitive, resetCounter } from "./primitives.js";
 import { updateOverlay } from "./ui.js";
 import { pushAdd, clearHistory } from "./history.js";
 import { stopPlay } from "./play.js";
+import { getCustomComponentSources, loadCustomComponents } from "./components.js";
+import { skyState, setSkybox } from "./skybox.js";
 
 /* ============================================================
    scene.json
 ============================================================ */
 export function sceneToJSON() {
   return JSON.stringify({
-    meta: { app: "MiniEditor", version: 10 },   // v9: collider, v10: ライト / 環境光
-    env: { ambient: ambientLight.intensity, sun: sunLight.intensity },
+    meta: { app: "MiniEditor", version: 12 },   // v11: customComponents, v12: env.skybox
+    env: { ambient: ambientLight.intensity, sun: sunLight.intensity, skybox: skyState.path },   // v12: skybox
+    customComponents: getCustomComponentSources(),   // v11: チャットで作った部品の定義
     camera: {
       name: camGizmo.name,
       position: camGizmo.position.toArray(),
@@ -68,10 +71,16 @@ export async function loadJSON(text) {
   select(null);
   resetCounter();
   resetLightCounter();
+  if (data.customComponents) loadCustomComponents(data.customComponents);   // v11 (objects より先に登録)
   if (data.env) {                                        // v10: 環境光
     ambientLight.intensity = data.env.ambient ?? 0.9;
     sunLight.intensity = data.env.sun ?? 1.2;
   }
+  // v12: 背景。古いファイルや読み込み失敗時は単色に戻す
+  setSkybox(data.env?.skybox || null).catch(err => {
+    console.warn("スカイボックスを読み込めません:", err);
+    setSkybox(null);
+  });
 
   for (const d of (data.objects || [])) {
     let obj;

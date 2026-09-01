@@ -16,6 +16,7 @@ import "./inspector.js";
 import "./controls.js";
 import "./hierarchy.js";
 import "./assets.js";
+import "./chat.js";
 
 /* ===== Assets: models / textures クリック ===== */
 document.querySelectorAll("[data-add]").forEach(el => {

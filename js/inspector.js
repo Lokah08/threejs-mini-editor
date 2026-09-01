@@ -3,8 +3,9 @@ import * as THREE from "three";
 import { app, camGizmo, gameCam, selBox, objects, ambientLight, sunLight, onSelect, notifySceneChanged } from "./state.js";
 import { applyLightSettings, isLight } from "./lights.js";
 import { pushCommand, pushDelete, snapshotTransform, pushTransform } from "./history.js";
-import { COMPONENT_TYPES } from "./components.js";
+import { COMPONENT_TYPES, onComponentsChanged } from "./components.js";
 import { applyTint } from "./io.js";
+import { skyState, skyboxOptions, setSkybox, onSkyboxOptionsLoaded } from "./skybox.js";
 
 const inspEmpty    = document.getElementById("insp-empty");
 const inspContent  = document.getElementById("insp-content");
@@ -33,14 +34,31 @@ const lightDistRow   = document.getElementById("light-dist-row");
 const lightAngleRow  = document.getElementById("light-angle-row");
 const envAmbient     = document.getElementById("env-ambient");
 const envSun         = document.getElementById("env-sun");
+const envSkybox      = document.getElementById("env-skybox");
 const compSection    = document.getElementById("comp-section");
 const compList       = document.getElementById("comp-list");
 const compAddSelect  = document.getElementById("comp-add-select");
 const compAddBtn     = document.getElementById("comp-add-btn");
 
-// 追加メニューは登録簿から一度だけ生成
-for (const [type, def] of Object.entries(COMPONENT_TYPES)) {
-  compAddSelect.append(new Option(def.label, type));
+// 追加メニューは登録簿から生成 (チャットでカスタム部品が増えたら作り直す)
+function rebuildCompAddSelect() {
+  const prev = compAddSelect.value;
+  compAddSelect.innerHTML = "";
+  for (const [type, def] of Object.entries(COMPONENT_TYPES)) {
+    compAddSelect.append(new Option(def.label, type));
+  }
+  if (COMPONENT_TYPES[prev]) compAddSelect.value = prev;
+}
+rebuildCompAddSelect();
+onComponentsChanged(() => {
+  rebuildCompAddSelect();
+  if (app.selected) renderComponents(app.selected);   // 定義が変わった部品のUIを更新
+});
+
+// 外部 (chat.js) からコンポーネント変更後に呼ぶ再描画
+export function refreshComponentsUI(obj) {
+  if (app.selected === obj) refreshInspector();
+  notifySceneChanged();
 }
 const bindInputs   = [...document.querySelectorAll("[data-bind]")];
 
@@ -90,6 +108,7 @@ export function refreshInspector() {
     camPlaySelect.value = camGizmo.userData.playMode || "fixed";
     envAmbient.value = ambientLight.intensity;
     envSun.value = sunLight.intensity;
+    syncSkyboxSelect();
   }
   else if (isLight(sel)) {
     lightColor.value = sel.userData.lightColor;
@@ -287,6 +306,35 @@ function bindEnvInput(input, light) {
 }
 bindEnvInput(envAmbient, ambientLight);
 bindEnvInput(envSun, sunLight);
+
+/* --- 背景 (スカイボックス) --- */
+function syncSkyboxSelect() {
+  const path = skyState.path || "";
+  // scene.json 由来など目録に無いパスも選べるように、無ければ項目を足す
+  if (path && ![...envSkybox.options].some(o => o.value === path)) {
+    envSkybox.append(new Option(path.split("/").pop(), path));
+  }
+  envSkybox.value = path;
+}
+onSkyboxOptionsLoaded(list => {
+  for (const { name, path } of list) envSkybox.append(new Option(name, path));
+  syncSkyboxSelect();
+});
+envSkybox.addEventListener("change", () => {
+  const before = skyState.path || "";
+  const after = envSkybox.value;
+  if (before === after) return;
+  const apply = path => setSkybox(path || null).catch(err => {
+    alert("背景画像を読み込めません: " + err.message);
+    setSkybox(null);
+    syncSkyboxSelect();
+  });
+  apply(after);
+  pushCommand({
+    undo: () => { apply(before); syncAfterEdit(camGizmo); },
+    redo: () => { apply(after);  syncAfterEdit(camGizmo); },
+  });
+});
 
 /* --- 当たり判定の種類 (実体 / 床のみ / なし) --- */
 colliderSelect.addEventListener("change", () => {

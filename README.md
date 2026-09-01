@@ -36,8 +36,10 @@ Three.js本体はCDN (unpkg) から読み込むため、ビルド不要・npm in
 - **編集ショートカット**: F (選択にフォーカス) / Delete (削除) / Ctrl+Z/Y (Undo/Redo) / Ctrl+D (複製)
 - **コンポーネント**: Rotator (回転) / Mover (往復) / Collectible (収集) / Trap (リスポーン) / Chaser (追跡する敵) / Goal (クリア判定) をオブジェクトに着脱
 - **アセットフォルダ**: `assets/` に置いたGLBパックをAssetsパネルから配置 (scene.jsonへはパス参照で保存)
+- **背景**: Main Camera の Inspector「背景」でスカイボックス (パノラマ画像) と単色を切り替え。候補は `assets/index.json` の `skyboxes` に追加
 - **ライト**: ポイント / スポット / 平行光をオブジェクトとして配置、色・強さ・距離を調整。環境光の強さも変更可
 - **サウンド**: 再生モード中のBGMループと効果音 (収集・トラップ・ゴール・落下)。音源は `assets/audio/`
+- **AIチャット**: 💬 AI ボタンで開くチャットに「〇〇するコンポーネントを作って」「Cube_01 を回転させて」と頼むと、Claude がコンポーネントを定義・装着する。作った部品は Components メニューにすぐ出て、scene.json にも保存される (Anthropic APIキーが必要。🔑 ボタンで設定、ブラウザ内にのみ保存)
 - **scene.json**: シーンの保存・読み込み (モーダル / ファイル選択 / D&D)
 - **GLB入出力**: .glb/.gltf のインポート (D&D対応)、シーン全体のGLB書き出し
 
@@ -54,6 +56,8 @@ Three.js本体はCDN (unpkg) から読み込むため、ビルド不要・npm in
 | `js/gizmo.js` | トランスフォームギズモ (移動/回転/拡縮) |
 | `js/inspector.js` | Inspectorパネルの表示と入力 |
 | `js/io.js` | scene.json / GLB の入出力 |
+| `js/chat.js` | エディタ内AIチャット (コンポーネント生成・装着) |
+| `js/skybox.js` | 背景のスカイボックス |
 | `js/ui.js` | ビュータブ、オーバーレイ |
 | `js/main.js` | エントリポイント、メインループ、初期シーン |
 

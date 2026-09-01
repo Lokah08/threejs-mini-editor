@@ -140,6 +140,95 @@ export const COMPONENT_TYPES = {
 };
 
 /* ============================================================
+   カスタムコンポーネント (エディタ内AIチャットが実行時に追加するもの)
+   定義のソースコード (JS式) を保持し、localStorage と scene.json に保存する。
+   ソースは「定義オブジェクトに評価される式」: ({ label, params, start, update, onTouch })
+   評価時は THREE を引数として渡す。
+============================================================ */
+export const CUSTOM_COMPONENTS = {};   // name -> { code }
+const BUILTIN_NAMES = new Set(Object.keys(COMPONENT_TYPES));
+const STORAGE_KEY = "miniEditor.customComponents";
+
+const compListeners = [];
+export function onComponentsChanged(fn) { compListeners.push(fn); }
+function notifyComponentsChanged() { for (const fn of compListeners) fn(); }
+
+// ソース文字列を評価して定義オブジェクトにする (検証つき。失敗は throw)
+export function evalComponentSource(code) {
+  const def = new Function("THREE", `"use strict"; return (${code}
+);`)(THREE);
+  if (!def || typeof def !== "object") throw new Error("定義がオブジェクトではありません");
+  if (!def.params || typeof def.params !== "object") def.params = {};
+  for (const [key, spec] of Object.entries(def.params)) {
+    if (!spec || !["number", "select", "checkbox"].includes(spec.type)) {
+      throw new Error(`params.${key}.type は number / select / checkbox のいずれかにしてください`);
+    }
+    if (spec.type === "select" && !Array.isArray(spec.options)) {
+      throw new Error(`params.${key}.options (配列) が必要です`);
+    }
+    if (!("default" in spec)) throw new Error(`params.${key}.default が必要です`);
+  }
+  if (!def.start && !def.update && !def.onTouch) {
+    throw new Error("start / update / onTouch のいずれかが必要です");
+  }
+  if (def.onTouch && def.touchable === undefined) def.touchable = true;
+  return def;
+}
+
+// 登録 (同名のカスタム定義は上書き。組み込みは上書き不可)
+export function registerComponent(name, code, { persist = true } = {}) {
+  if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) throw new Error("名前は英数字 (先頭は英字) にしてください: " + name);
+  if (BUILTIN_NAMES.has(name)) throw new Error(`${name} は組み込みコンポーネントなので上書きできません`);
+  const def = evalComponentSource(code);
+  if (!def.label) def.label = name;
+  def.custom = true;
+  COMPONENT_TYPES[name] = def;
+  CUSTOM_COMPONENTS[name] = { code };
+  if (persist) saveCustomComponents();
+  notifyComponentsChanged();
+  return def;
+}
+
+export function unregisterComponent(name) {
+  if (!CUSTOM_COMPONENTS[name]) return false;
+  delete COMPONENT_TYPES[name];
+  delete CUSTOM_COMPONENTS[name];
+  saveCustomComponents();
+  notifyComponentsChanged();
+  return true;
+}
+
+// scene.json 保存用: { name: { code } }
+export function getCustomComponentSources() {
+  return JSON.parse(JSON.stringify(CUSTOM_COMPONENTS));
+}
+
+// scene.json 読込用: まとめて登録 (壊れた定義は飛ばしてコンソールに出す)
+export function loadCustomComponents(map, { persist = true } = {}) {
+  let count = 0;
+  for (const [name, entry] of Object.entries(map || {})) {
+    try {
+      registerComponent(name, entry.code, { persist: false });
+      count++;
+    } catch (e) {
+      console.warn(`カスタムコンポーネント ${name} を読み込めません:`, e);
+    }
+  }
+  if (persist) saveCustomComponents();
+  return count;
+}
+
+function saveCustomComponents() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(CUSTOM_COMPONENTS)); } catch {}
+}
+
+// 起動時: 前回までにチャットで作った部品を復元
+try {
+  const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+  loadCustomComponents(saved, { persist: false });
+} catch {}
+
+/* ============================================================
    実行系 (play.js から呼ばれる)
 ============================================================ */
 const runtime = {

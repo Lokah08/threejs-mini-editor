@@ -22,7 +22,7 @@ function iconFor(name) {
 
 async function loadManifest() {
   try {
-    const res = await fetch("assets/index.json");
+    const res = await fetch("assets/index.json", { cache: "no-cache" });   // 目録を編集したらすぐ反映
     if (!res.ok) return;   // assetsフォルダが無い環境では静かにスキップ
     const manifest = await res.json();
     render(manifest);

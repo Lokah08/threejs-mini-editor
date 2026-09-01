@@ -85,6 +85,7 @@
       <div class="vtab" data-view="game"><span class="dot"></span>Game View</div>
       <div id="tools">
         <label class="voljack" title="音量"><span>🔊</span><input type="range" id="vol-master" min="0" max="1" step="0.05" value="0.8"></label>
+        <button class="tool chat" id="btn-chat" title="AIチャット: コンポーネント作成などの作業を頼む">💬 AI</button>
         <button class="tool play" id="btn-play" title="再生モード: プレイヤーをWASDで操作">▶ 再生</button>
         <button class="tool active" data-tool="translate" title="ショートカット: W">⇄ 移動 (W)</button>
         <button class="tool" data-tool="rotate" title="ショートカット: E">⟳ 回転 (E)</button>
@@ -94,6 +95,24 @@
     <div id="canvas-wrap">
       <div id="game-frame"></div>
       <div id="view-overlay"></div>
+    </div>
+
+    <!-- ===== AIチャット (作業依頼用ドロワー) ===== -->
+    <div id="chat" style="display:none">
+      <div class="chead">
+        <span class="ctitle">💬 AI アシスタント</span>
+        <span class="cmodel" id="chat-model"></span>
+        <button class="minibtn" id="chat-key" title="Anthropic APIキーを設定 (このブラウザのlocalStorageに保存)">🔑 APIキー</button>
+        <button class="minibtn" id="chat-clear" title="会話をリセット">🗑 会話クリア</button>
+        <button class="minibtn" id="chat-close" title="閉じる">✕</button>
+      </div>
+      <div class="cmsgs" id="chat-msgs">
+        <div class="cmsg sys">「〇〇するコンポーネントを作って」「Cube_01 を回転させて」のように、シーン内での作業を頼めます。作った部品は Inspector の Components メニューにすぐ追加され、scene.json にも一緒に保存されます。</div>
+      </div>
+      <div class="cinput">
+        <textarea id="chat-text" rows="2" placeholder="例: 触れると3秒後に消える床のコンポーネントを作って  (Enterで送信 / Shift+Enterで改行)"></textarea>
+        <button class="minibtn primary" id="chat-send">送信</button>
+      </div>
     </div>
   </div>
 
@@ -134,6 +153,9 @@
           <div class="irow"><label style="width:auto;font-family:inherit">FOV</label><input type="number" step="1" min="10" max="120" id="cam-fov"></div>
           <div class="irow"><label style="width:auto;font-family:inherit">環境光</label><input type="number" step="0.05" min="0" id="env-ambient"></div>
           <div class="irow"><label style="width:auto;font-family:inherit">全体照明</label><input type="number" step="0.1" min="0" id="env-sun"></div>
+          <div class="irow"><label style="width:auto;font-family:inherit">背景</label>
+            <select id="env-skybox"><option value="">単色</option></select>
+          </div>
           <div class="irow" style="margin-bottom:0"><label style="width:auto;font-family:inherit">再生中</label>
             <select id="cam-play">
               <option value="fixed">固定</option>
@@ -203,7 +225,8 @@
 {
   "imports": {
     "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
+    "@anthropic-ai/sdk": "https://esm.sh/@anthropic-ai/sdk@0.123.0"
   }
 }
 </script>
